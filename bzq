@@ -1,0 +1,295 @@
+#!/usr/bin/env bash
+
+# BZQ - Biz Qops (pronounced "Biz Chops") CLI Utility Suite
+# Google Workspace Enterprise Application Manager
+
+# Source core helpers
+CORE_PATH="/Users/mitchgarner/source/repos/ESR-Biz_Qops/BZQ-cli/bzq-core.sh"
+if [ -f "$CORE_PATH" ]; then
+  source "$CORE_PATH"
+else
+  echo -e "\033[0;31m✘ ERROR:\033[0m BZQ core helper file not found at $CORE_PATH" >&2
+  exit 1
+fi
+
+check_dependencies
+check_auth
+
+# Help Usage Details
+show_help() {
+  log_banner
+  echo -e "${BOLD}USAGE:${NC}"
+  echo -e "  ./bzq <command> [arguments] [options]"
+  echo ""
+  echo -e "${BOLD}COMMANDS:${NC}"
+  echo -e "  ${BOLD}login${NC}                                 Authenticate clasp with your Google Account."
+  echo -e "  ${BOLD}pull <folder> [script-id] [options]${NC}    Sync down / clone files from Google Apps Script."
+  echo -e "  ${BOLD}push <folder> [options]${NC}                Push local files up to Google Apps Script."
+  echo -e "  ${BOLD}deploy <folder> [description]${NC}          Create a new versioned deployment of the project."
+  echo -e "  ${BOLD}status <folder>${NC}                        Check local/remote sync status of files."
+  echo ""
+  echo -e "${BOLD}PULL OPTIONS:${NC}"
+  echo -e "  ${BOLD}-d, --latest-deployed${NC}                 Query deployments and pull the latest deployed version."
+  echo -e "  ${BOLD}-f, --force${NC}                           Force pull, deleting local files that do not exist remotely."
+  echo ""
+  echo -e "${BOLD}PUSH OPTIONS:${NC}"
+  echo -e "  ${BOLD}-w, --watch${NC}                           Watch for local changes and push them automatically."
+  echo ""
+  echo -e "${BOLD}EXAMPLES:${NC}"
+  echo -e "  ${CYAN}# Authenticate first${NC}"
+  echo -e "  ./bzq login"
+  echo ""
+  echo -e "  ${CYAN}# Clone a project for the first time${NC}"
+  echo -e "  ./bzq pull AppsUtilities 1A2B3C4D5E6F7G8H..."
+  echo ""
+  echo -e "  ${CYAN}# Pull the latest HEAD (development) revision${NC}"
+  echo -e "  ./bzq pull AppsUtilities"
+  echo ""
+  echo -e "  ${CYAN}# Pull the latest DEPLOYED production version${NC}"
+  echo -e "  ./bzq pull AppsUtilities --latest-deployed"
+  echo ""
+  echo -e "  ${CYAN}# Push your local changes back to the workbook script${NC}"
+  echo -e "  ./bzq push AppsUtilities"
+  echo ""
+  exit 0
+}
+
+# Main routing logic
+COMMAND="$1"
+shift
+
+case "$COMMAND" in
+  login)
+    log_info "Initializing clasp login. This will open a browser window..."
+    npx @google/clasp login
+    if [ $? -eq 0 ]; then
+      log_success "clasp authentication successfully completed!"
+    else
+      log_error "clasp login failed."
+    fi
+    ;;
+
+  pull)
+    # Parse pull arguments
+    FOLDER=""
+    SCRIPT_ID=""
+    LATEST_DEPLOYED=false
+    FORCE_PULL=false
+
+    while [ $# -gt 0 ]; do
+      case "$1" in
+        -d|--latest-deployed)
+          LATEST_DEPLOYED=true
+          shift
+          ;;
+        -f|--force)
+          FORCE_PULL=true
+          shift
+          ;;
+        -*)
+          log_error "Unknown option: $1. Run './bzq' for usage instructions."
+          ;;
+        *)
+          if [ -z "$FOLDER" ]; then
+            FOLDER="$1"
+          elif [ -z "$SCRIPT_ID" ]; then
+            SCRIPT_ID="$1"
+          else
+            log_error "Unexpected argument: $1. Run './bzq' for usage instructions."
+          fi
+          shift
+          ;;
+      esac
+    done
+
+    if [ -z "$FOLDER" ]; then
+      log_error "Missing required <folder> argument. Example: './bzq pull AppsUtilities'"
+    fi
+
+    TARGET_DIR="/Users/mitchgarner/source/repos/ESR-Biz_Qops/$FOLDER"
+    CLASP_CONFIG="$TARGET_DIR/.clasp.json"
+
+    if [ ! -f "$CLASP_CONFIG" ]; then
+      # Cloning a new project (first-time sync)
+      if [ -z "$SCRIPT_ID" ]; then
+        log_error "No project config (.clasp.json) found in '$FOLDER'.\n   You must provide a [script-id] to clone this project for the first time.\n   Example: './bzq pull $FOLDER <script-id>'"
+      fi
+
+      log_info "Initializing project clone for '$FOLDER' with Script ID: $SCRIPT_ID..."
+      mkdir -p "$TARGET_DIR"
+
+      # Determine version if --latest-deployed is selected
+      VERSION=""
+      if [ "$LATEST_DEPLOYED" = true ]; then
+        log_info "Querying deployments for Script ID $SCRIPT_ID..."
+        VERSION=$(npx @google/clasp deployments "$SCRIPT_ID" 2>/dev/null | grep -o "@[0-9]\+" | tail -n 1 | tr -d "@")
+        if [ -n "$VERSION" ]; then
+          log_success "Found latest deployed version: @$VERSION"
+        else
+          log_warn "No deployments found. Cloning HEAD revision."
+        fi
+      fi
+
+      (
+        cd "$TARGET_DIR" || log_error "Failed to access directory $TARGET_DIR"
+        if [ -n "$VERSION" ]; then
+          npx @google/clasp clone "$SCRIPT_ID" "$VERSION"
+        else
+          npx @google/clasp clone "$SCRIPT_ID"
+        fi
+      )
+
+      if [ $? -eq 0 ]; then
+        ensure_claspignore "$TARGET_DIR"
+        log_success "Successfully synced down project to '$FOLDER'!"
+      else
+        log_error "Failed to clone script. Ensure your Script ID is correct and you are authenticated."
+      fi
+    else
+      # Pulling an existing project
+      if [ -n "$SCRIPT_ID" ]; then
+        log_warn "Project already configured in '$FOLDER'. Ignoring provided Script ID."
+      fi
+
+      log_info "Syncing down latest files in folder '$FOLDER'..."
+      ensure_claspignore "$TARGET_DIR"
+
+      # Prepare clasp pull arguments
+      PULL_ARGS=()
+      if [ "$LATEST_DEPLOYED" = true ]; then
+        VERSION=$(get_latest_deployment_version "$TARGET_DIR")
+        if [ "$VERSION" != "HEAD" ]; then
+          log_info "Targeting latest deployed version: @$VERSION"
+          PULL_ARGS+=("--versionNumber" "$VERSION")
+        fi
+      fi
+
+      if [ "$FORCE_PULL" = true ]; then
+        PULL_ARGS+=("-f")
+      fi
+
+      (
+        cd "$TARGET_DIR" || log_error "Failed to access directory $TARGET_DIR"
+        npx @google/clasp pull "${PULL_ARGS[@]}"
+      )
+
+      if [ $? -eq 0 ]; then
+        log_success "Successfully pulled project in '$FOLDER'!"
+      else
+        log_error "Failed to pull files. Run with --force or check connection."
+      fi
+    fi
+    ;;
+
+  push)
+    FOLDER=""
+    WATCH=false
+
+    while [ $# -gt 0 ]; do
+      case "$1" in
+        -w|--watch)
+          WATCH=true
+          shift
+          ;;
+        -*)
+          log_error "Unknown option: $1"
+          ;;
+        *)
+          if [ -z "$FOLDER" ]; then
+            FOLDER="$1"
+          else
+            log_error "Unexpected argument: $1"
+          fi
+          shift
+          ;;
+      esac
+    done
+
+    if [ -z "$FOLDER" ]; then
+      log_error "Missing required <folder> argument. Example: './bzq push AppsUtilities'"
+    fi
+
+    TARGET_DIR="/Users/mitchgarner/source/repos/ESR-Biz_Qops/$FOLDER"
+    CLASP_CONFIG="$TARGET_DIR/.clasp.json"
+
+    if [ ! -f "$CLASP_CONFIG" ]; then
+      log_error "Project not initialized in '$FOLDER'. Run './bzq pull $FOLDER <script-id>' first."
+    fi
+
+    ensure_claspignore "$TARGET_DIR"
+
+    (
+      cd "$TARGET_DIR" || log_error "Failed to access directory $TARGET_DIR"
+      if [ "$WATCH" = true ]; then
+        log_info "Watching local files for automatic pushes to Google Apps Script..."
+        npx @google/clasp push --watch
+      else
+        log_info "Pushing local modifications to Google Apps Script..."
+        npx @google/clasp push
+      fi
+    )
+
+    if [ $? -eq 0 ]; then
+      log_success "Pushed code successfully to Google Sheets!"
+    else
+      log_error "Failed to push files."
+    fi
+    ;;
+
+  deploy)
+    FOLDER="$1"
+    DESC="$2"
+
+    if [ -z "$FOLDER" ]; then
+      log_error "Missing required <folder> argument. Example: './bzq deploy AppsUtilities \"v1.0.0 Release\"'"
+    fi
+
+    TARGET_DIR="/Users/mitchgarner/source/repos/ESR-Biz_Qops/$FOLDER"
+    CLASP_CONFIG="$TARGET_DIR/.clasp.json"
+
+    if [ ! -f "$CLASP_CONFIG" ]; then
+      log_error "Project not initialized in '$FOLDER'. Run './bzq pull $FOLDER <script-id>' first."
+    fi
+
+    (
+      cd "$TARGET_DIR" || log_error "Failed to access directory $TARGET_DIR"
+      if [ -n "$DESC" ]; then
+        log_info "Creating a new deployment with description: '$DESC'..."
+        npx @google/clasp deploy --description "$DESC"
+      else
+        log_info "Creating a new versioned deployment..."
+        npx @google/clasp deploy
+      fi
+    )
+
+    if [ $? -eq 0 ]; then
+      log_success "Deployment created successfully!"
+    else
+      log_error "Failed to create deployment."
+    fi
+    ;;
+
+  status)
+    FOLDER="$1"
+
+    if [ -z "$FOLDER" ]; then
+      log_error "Missing required <folder> argument. Example: './bzq status AppsUtilities'"
+    fi
+
+    TARGET_DIR="/Users/mitchgarner/source/repos/ESR-Biz_Qops/$FOLDER"
+    CLASP_CONFIG="$TARGET_DIR/.clasp.json"
+
+    if [ ! -f "$CLASP_CONFIG" ]; then
+      log_error "Project not initialized in '$FOLDER'. Run './bzq pull $FOLDER <script-id>' first."
+    fi
+
+    (
+      cd "$TARGET_DIR" || log_error "Failed to access directory $TARGET_DIR"
+      npx @google/clasp status
+    )
+    ;;
+
+  *)
+    show_help
+    ;;
+esac

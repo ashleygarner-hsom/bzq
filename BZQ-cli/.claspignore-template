@@ -1,0 +1,34 @@
+# .claspignore template for Biz Qops
+# This file prevents local development resources from being pushed to Google Sheets Apps Script.
+
+# Ignore Git directory
+.git/
+.gitignore
+
+# Ignore node modules and local configuration files
+node_modules/
+package.json
+package-lock.json
+
+# Ignore Markdown documentation and project design files
+**/*.md
+LICENSE
+
+# Ignore shell scripts and CLI directories
+**/*.sh
+bzq
+BZQ-cli/
+
+# Ignore clasp config files (handled internally by clasp, but good for safety)
+.claspignore
+.clasprc.json
+
+# Keep only Apps Script source files (.js, .html, and appsscript.json)
+# (clasp does this by default, but this list ensures other developer config files,
+# workspace configurations, and temp files are never uploaded)
+.DS_Store
+Thumbs.db
+tmp/
+temp/
+.idea/
+.vscode/

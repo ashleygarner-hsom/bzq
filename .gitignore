@@ -1,0 +1,75 @@
+# ==============================================================================
+# Git Ignore Configuration - Biz Qops (Biz Chops)
+# Out-of-the-box Google Workspace Business Operations Platform
+# ==============================================================================
+
+# macOS System Files
+.DS_Store
+.AppleDouble
+.LSOverride
+Icon
+._*
+.DocumentRevisions-V1
+.fseventsd
+.Spotlight-V100
+.TemporaryItems
+.Trashes
+.VolumeIcon.icns
+.com.apple.timemachine.donotbackup
+*.icloud
+
+# Windows System Files
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# Node.js (Dependencies & Logs)
+node_modules/
+jspm_packages/
+web_modules/
+.npm
+.eslintcache
+.stylelintcache
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# Environment Variables & Sensitive Credentials
+# (NEVER check API keys, passwords, or tokens into Git)
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+*.env
+*.pem
+*.key
+*.cert
+
+# Google Apps Script / clasp specific files
+# NOTE: We DO commit `.clasp.json` (project-script linkage) and `appsscript.json` (manifest).
+# We MUST ignore local credential files if they are ever exported or saved locally.
+.clasprc.json
+
+# IDE / Editor Configurations
+.vscode/
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.swp
+*.swo
+.project
+.classpath
+.settings/
+
+# Temporary and Build Files
+tmp/
+temp/
+dist/
+build/
+out/
+*.log
