@@ -17,21 +17,30 @@ class AppUtilitiesGlobalProperties {
   static get sequenceConfigurationSheetName_(){
     return "__SequenceConfiguration";
   }
-    /**
-     * Looks in the first (or provided) row of the specified sheet in the specified workbook for the provided string header name, to determine which column it occupies, for the purpose of identifying the correct column values to use for validation in other records
-     * @param {SpreadsheetService.Spreadsheet} spreadsheet - The spreadsheet workbook to search in
-     * @param {string} sheetName - Plural object name that is used as the sheet name for that object
-     * @param {string} fieldNameToLocate - Name of the id field, typically the single form of the sheet name
-     * @param {int} headerNum - The row of the data sheet where primary headers are located, defaults to 1 unless provided
-     * @return {int} The 1-indexed column number of the provided field name in the provided sheet
-     */
-    static getColumnIndexOnSheet(spreadsheetId, sheetName, fieldNameToLocate, headerNum = 1) {
-      console.log(spreadsheetId);
-      const spreadsheet = SpreadsheetApp.openById(spreadsheetId);
-      const sheet = spreadsheet.getSheetByName(sheetName);
-      const range = sheet.getRange(`${headerNum}:${headerNum}`);
-      return range.createTextFinder(fieldNameToLocate).findNext().getColumn();
-    }
+  /**
+   * Static reference to the Object Configuration sheet
+   */
+  static get objectConfigurationSheetName_(){
+    return "__ObjectConfiguration";
+  }
+  /**
+   * Static reference to the Lookup Configuration sheet
+   */
+  static get lookupConfigurationSheetName_(){
+    return "__LookupConfiguration";
+  }
+  /**
+   * Static reference to the Dropdown Configuration sheet
+   */
+  static get dropdownConfigurationSheetName_(){
+    return "__DropdownConfiguration";
+  }
+  /**
+   * Static reference to the Global Dropdown Configuration sheet
+   */
+  static get globalDropdownConfigurationSheetName_(){
+    return "__GlobalDropdownConfiguration";
+  }
 }
 /**
  * Tests the AppUtilitiesGlobalProperties class

@@ -39,7 +39,7 @@ class ValidationContext {
     objectName ?? (() => { throw new Error("Object name not provided"); })();
     targetSpreadsheet ?? (() => { throw new Error("Spreadheet Id not provided"); })();
     const helperSheet = SpreadsheetApp.openById(targetSpreadsheet).getSheetByName(this.getHelperRangeSheetName(objectName));
-    helperSheet ?? (() => { throw new Error(`Helper sheet ${this.getHelperRangeSheetName(objectName)} does not exist in ${targetSpreadsheet}`)});
+    helperSheet ?? (() => { throw new Error(`Helper sheet ${this.getHelperRangeSheetName(objectName)} does not exist in ${targetSpreadsheet}`)})();
     const firstCell = helperSheet.getRange("A1");
     firstCell.setFormula(this.getHelperRangeFormula(objectName));
   }
@@ -70,7 +70,7 @@ class ValidationContext {
     spreadsheetIdToCreateHelperSheetIn ?? (() => { throw new Error("Spreadsheet Id not provided to create helper sheet"); })();
     const spreadsheet = SpreadsheetApp.openById(spreadsheetIdToCreateHelperSheetIn);
     const helperSheetName = this.getHelperRangeSheetName(objectName);
-    !spreadsheet.getSheetByName(helperSheetName) ?? (() => { throw new Error(`Helper Sheet ${helperSheetName} already exists in workbook ${spreadsheetIdToCreateHelperSheetIn}`); })();
+    !spreadsheet.getSheetByName(helperSheetName) ? (() => { throw new Error(`Helper Sheet ${helperSheetName} already exists in workbook ${spreadsheetIdToCreateHelperSheetIn}`); })() : null;
     spreadsheet.insertSheet(helperSheetName).hideSheet();
     if (spreadsheet.getSheetByName(helperSheetName)){
       return true;
@@ -249,7 +249,7 @@ function adHocTest(){
  * @returns {string[]} Array of strings that are the current lookup values for the provided object
  */
 function validationContext_getLookupRangeValuesForForm(referencedObjectName){
-  ValidationContext.getDataSheetObjectValidationValues(referencedObjectName);
+  return ValidationContext.getDataSheetObjectValidationValues(referencedObjectName);
 }
 /**
  * Global dropdowns don't refer to a specific object name in their configuration so they are retrieved differently

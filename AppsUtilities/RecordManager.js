@@ -15,10 +15,10 @@ class RecordManager{
     const idFieldName = ConfigurationManager.getConfigValue(`${sheetName}_ID_FIELD_NAME`);
     const headerNumber = ConfigurationManager.getConfigValue(`${sheetName}_HEADER_NUM`);
     const newRecordNumber = SequenceManager.processSequenceForObject(sheetName);
-    if (isForForm = true) {
+    if (isForForm) {
       return newRecordNumber;
     }
-    const idColumnIndex = AppUtilitiesGlobalProperties.getColumnIndexOnSheet(spreadsheetId, 
+    const idColumnIndex = GlobalUtilities.getColumnIndexOnSheet(spreadsheetId, 
                                                        sheetName,
                                                        idFieldName,
                                                        headerNumber

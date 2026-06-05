@@ -43,42 +43,56 @@ class SequenceManager {
     } 
   }
   /**
-   * Retrieves the next valid value in the sequence for the provided dataSheetName
-   * @param {string} dataSheetName - The plural of the business object which also acts as the sheet name
-   * @return {string} The next valid value to use in the sequence
+   * Formats and returns the next valid value in the sequence based on the provided sequence row data
+   * @param {any[]} sequenceRow - The row of sequence configuration data
+   * @return {string | null} The formatted sequence value
    */
-  static retrieveNextSequenceValue_(dataSheetName){
-    const sequenceRow = this.retrieveSequenceDataRow_(dataSheetName);
-    if (sequenceRow !== null){
+  static retrieveNextSequenceValue_(sequenceRow) {
+    if (sequenceRow !== null && sequenceRow !== undefined) {
       return `${sequenceRow[1]}${sequenceRow[4]}`;
     }
+    return null;
   }
   /**
-   * Increments the sequence for the provided data sheet name by one for next use
-   * @param {string} dataSheetName - The plural of the business object which also acts as the sheet name
-   * @returns {string | null} The incremented sequence number, or null is process was unsuccessful
+   * Increments the sequence in the sheet by one and returns the incremented formatted sequence value
+   * @param {any[]} sequenceRow - The row of sequence configuration data
+   * @returns {string | null} The incremented sequence number, or null if the process was unsuccessful
    */
-  static incrementSequence_(dataSheetName){
-    const sequenceRow = this.retrieveSequenceDataRow_(dataSheetName);
+  static incrementSequence_(sequenceRow) {
+    if (!sequenceRow) {
+      return null;
+    }
     const sequenceRowIndex = sequenceRow.rowIndex;
-    const nextSequenceValue = sequenceRow[4] + 1
+    const nextSequenceValue = sequenceRow[4] + 1;
     this.sequenceSheet_.getRange(sequenceRowIndex + 1, 5).setValue(nextSequenceValue);
     return `${sequenceRow[1]}${nextSequenceValue}`;
   }
   /**
-   * For the provided object name, retrieves the next sequence value to use and increments the record for the next value
+   * For the provided object name, retrieves the next sequence value to use and increments the record for the next value.
+   * This is optimized to read the sequence configuration sheet only once.
    * @param {string} dataSheetName - The plural of the business object which is also used as the sheet name
    * @returns {string | null} The next value in the sequence to use, or null if the processing failed
    */
-  static processSequenceForObject(dataSheetName){
-    if (dataSheetName === null){
+  static processSequenceForObject(dataSheetName) {
+    if (dataSheetName === null) {
       return null;
     }
-    const sequenceValueToUse = this.retrieveNextSequenceValue_(dataSheetName);
-    const nextSequenceValue = this.incrementSequence_(dataSheetName);
-    if (sequenceValueToUse !== nextSequenceValue) {
-      return sequenceValueToUse;
+    const sequenceRow = this.retrieveSequenceDataRow_(dataSheetName);
+    if (!sequenceRow) {
+      const errorMsg = `Sequence configuration row not found for datasheet name '${dataSheetName}'.`;
+      console.error(errorMsg);
+      throw new Error(errorMsg);
     }
-    return null;
+    
+    const sequenceValueToUse = this.retrieveNextSequenceValue_(sequenceRow);
+    const nextSequenceValue = this.incrementSequence_(sequenceRow);
+    
+    if (sequenceValueToUse === nextSequenceValue || sequenceValueToUse === null || nextSequenceValue === null) {
+      const errorMsg = `Sequence increment failed for '${dataSheetName}'. Current formatted value: '${sequenceValueToUse}', next formatted value: '${nextSequenceValue}'. Verify that the sequence starting/current value is configured as a valid number in '__SequenceConfiguration'.`;
+      console.error(errorMsg);
+      throw new Error(errorMsg);
+    }
+    
+    return sequenceValueToUse;
   }
 }
