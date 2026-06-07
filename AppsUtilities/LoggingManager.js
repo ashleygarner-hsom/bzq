@@ -14,11 +14,25 @@ class LoggingManager {
     console.log(message);
     return;
   }
+  /**
+   * Logs an error message to the execution console.
+   * @param {string} message - The error message to log
+   */
+  static LogError_(message) {
+    console.error(message);
+  }
 }
 /**
- * Wrapper calls the debug logger if the Logging Manager
+ * Wrapper calls the debug logger of the Logging Manager
  * @param {string} message - The message to log to the execution console
  */
 function loggingManager_LogDebugMessage(message) {
   LoggingManager.LogDebugMessage_(message);
+}
+/**
+ * Wrapper calls the error logger of the Logging Manager
+ * @param {string} message - The error message to log
+ */
+function loggingManager_LogError(message) {
+  LoggingManager.LogError_(message);
 }

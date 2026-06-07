@@ -33,7 +33,24 @@ class GlobalUtilities{
                             .getA1Notation()
                             .replace(/\d/g, "")
   }
+  /**
+   * Dynamically maps a row array to a key-value object using the headers list.
+   * @param {string[]} headers - Sheet header columns
+   * @param {any[]} row - Data row values
+   * @returns {Object} Mapped object
+   */
+  static getRowDataAsObject(headers, row) {
+    const obj = {};
+    headers.forEach((header, index) => {
+      const headerStr = String(header).trim();
+      if (headerStr !== '') {
+        obj[headerStr] = row[index];
+      }
+    });
+    return obj;
+  }
 }
+
 /**
  * Looks in the first (or provided) row of the specified sheet in the specified workbook for the provided string header name, to determine which column it occupies, for the purpose of identifying the correct column values to use for validation in other records
  * @param {string} spreadsheetId - The spreadsheet workbook to search in

@@ -10,10 +10,14 @@ class RecordManager{
    * @returns {string|null} Returns the next sequence id if isForForm is true, otherwise nothing is directly returned
    */
   static newRecord(sheetName, isForForm = false){
-    const spreadsheetId = ConfigurationManager.getConfigValue(`${sheetName}_SPREADSHEET_ID`);
+    const objConfig = ConfigurationManager.getObjectConfiguration(sheetName, 'datasheetName');
+    if (!objConfig) {
+      throw new Error(`Configuration not found for sheet ${sheetName}`);
+    }
+    const spreadsheetId = objConfig["Spreadsheet Id"];
     const sheet = SpreadsheetApp.openById(spreadsheetId).getSheetByName(sheetName);
-    const idFieldName = ConfigurationManager.getConfigValue(`${sheetName}_ID_FIELD_NAME`);
-    const headerNumber = ConfigurationManager.getConfigValue(`${sheetName}_HEADER_NUM`);
+    const idFieldName = objConfig["Id Field Name"];
+    const headerNumber = Number(objConfig["Header Number"]) || 1;
     const newRecordNumber = SequenceManager.processSequenceForObject(sheetName);
     if (isForForm) {
       return newRecordNumber;
@@ -26,6 +30,28 @@ class RecordManager{
     const lastDataRow = sheet.getLastRow() + 1
     const recordIdRange = sheet.getRange(lastDataRow, idColumnIndex);
     recordIdRange.setValue(newRecordNumber);
+  }
+  /**
+   * Processes record edits on watched sheets, routing them to the validation context.
+   * @param {GoogleAppsScript.Events.SheetsOnEdit} e - The onEdit event object
+   */
+  static processRecordEdit(e) {
+    if (!e || !e.range) return;
+    const range = e.range;
+    const sheet = range.getSheet();
+    const sheetName = sheet.getName();
+    const spreadsheet = e.source;
+    
+    // Retrieve object configuration by datasheet name
+    const objConfig = ConfigurationManager.getObjectConfiguration(sheetName, 'datasheetName');
+    if (!objConfig) return;
+    
+    // Check if validation is enabled
+    const enabled = String(objConfig["Enabled For Validation"]).toUpperCase() === 'TRUE';
+    if (!enabled) return;
+    
+    // Route to ValidationContext
+    ValidationContext.processRecordEdit(spreadsheet, sheetName, range, objConfig);
   }
 }
 /**
@@ -43,4 +69,11 @@ function newRecord(sheetName){
  */
 function requestRecordIdForForm(sheetName){
   return RecordManager.newRecord(sheetName, true);
+}
+/**
+ * Processes record edits on watched sheets, routing them to the validation context.
+ * @param {GoogleAppsScript.Events.SheetsOnEdit} e - The onEdit event object
+ */
+function recordManager_processRecordEdit(e) {
+  RecordManager.processRecordEdit(e);
 }
