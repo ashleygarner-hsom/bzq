@@ -49,7 +49,7 @@ function appInit_setupInstallableTrigger() {
              .onOpen()
              .create();
              
-    SpreadsheetApp.getUi().alert("Initialization Successful", "The branded loading screen has been registered. It will display and lock spreadsheet interaction during initial cache warm-up on subsequent sheet opens.", SpreadsheetApp.getUi().ButtonSet.OK);
+    SpreadsheetApp.getUi().alert("Initialization Successful", "Biz Qops has been successfully ", SpreadsheetApp.getUi().ButtonSet.OK);
   } catch (e) {
     SpreadsheetApp.getUi().alert("Initialization Failed", "Error creating startup trigger: " + e.message, SpreadsheetApp.getUi().ButtonSet.OK);
   }
