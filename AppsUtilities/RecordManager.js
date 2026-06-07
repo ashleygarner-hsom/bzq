@@ -15,7 +15,11 @@ class RecordManager{
       throw new Error(`Configuration not found for sheet ${sheetName}`);
     }
     const spreadsheetId = objConfig["Spreadsheet Id"];
-    const sheet = SpreadsheetApp.openById(spreadsheetId).getSheetByName(sheetName);
+    const spreadsheet = SpreadsheetApp.openById(spreadsheetId);
+    const sheet = spreadsheet.getSheetByName(sheetName);
+    if (!sheet) {
+      throw new Error(`Sheet ${sheetName} not found in workbook.`);
+    }
     const idFieldName = objConfig["Id Field Name"];
     const headerNumber = Number(objConfig["Header Number"]) || 1;
     const newRecordNumber = SequenceManager.processSequenceForObject(sheetName);
@@ -27,9 +31,14 @@ class RecordManager{
                                                        idFieldName,
                                                        headerNumber
                                                        );
-    const lastDataRow = sheet.getLastRow() + 1
+    const lastDataRow = sheet.getLastRow() + 1;
     const recordIdRange = sheet.getRange(lastDataRow, idColumnIndex);
     recordIdRange.setValue(newRecordNumber);
+    
+    // Apply validation rules to the new row immediately, ignoring the empty primary fields check
+    const lastCol = sheet.getLastColumn() || 1;
+    const validationRange = sheet.getRange(lastDataRow, 1, 1, lastCol);
+    ValidationContext.processRecordEdit(spreadsheet, sheetName, validationRange, objConfig, true);
   }
   /**
    * Processes record edits on watched sheets, routing them to the validation context.

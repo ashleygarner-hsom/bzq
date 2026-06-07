@@ -12,10 +12,14 @@ function onOpen() {
 
 /**
  * Simple trigger that runs when a user edits a cell in a spreadsheet.
- * Coordinates validation and other edit events.
+ * Safely exits if running as simple trigger to prevent authorization exceptions.
  * @param {GoogleAppsScript.Events.SheetsOnEdit} e - The edit event object
  */
 function onEdit(e) {
+  // Simple triggers cannot make calls requiring authorization (e.g. SpreadsheetApp.openById).
+  if (e && (e.authMode === ScriptApp.AuthMode.NONE || e.authMode === ScriptApp.AuthMode.LIMITED)) {
+    return;
+  }
   RecordManager.processRecordEdit(e);
 }
 
@@ -29,29 +33,53 @@ function triggerAddRecordToActivePage() {
 }
 
 /**
- * Programmatically registers the installable trigger to run the loading overlay.
+ * Programmatically registers the installable triggers to run the loading overlay and edit validations.
  */
 function appInit_setupInstallableTrigger() {
-  const functionName = 'appInit_onOpenInstallable';
+  const openTriggerFn = 'appInit_onOpenInstallable';
+  const editTriggerFn = 'appInit_onEditInstallable';
   const spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
   
   try {
     const triggers = ScriptApp.getUserTriggers(spreadsheet);
-    const triggerExists = triggers.some(t => t.getHandlerFunction() === functionName);
     
-    if (triggerExists) {
-      SpreadsheetApp.getUi().alert("Initialization Status", "Application is already initialized: Startup trigger is active.", SpreadsheetApp.getUi().ButtonSet.OK);
-      return;
+    let openCreated = false;
+    let editCreated = false;
+    
+    // Check and create Open trigger
+    const openExists = triggers.some(t => t.getHandlerFunction() === openTriggerFn);
+    if (!openExists) {
+      ScriptApp.newTrigger(openTriggerFn)
+               .forSpreadsheet(spreadsheet)
+               .onOpen()
+               .create();
+      openCreated = true;
     }
     
-    ScriptApp.newTrigger(functionName)
-             .forSpreadsheet(spreadsheet)
-             .onOpen()
-             .create();
+    // Check and create Edit trigger
+    const editExists = triggers.some(t => t.getHandlerFunction() === editTriggerFn);
+    if (!editExists) {
+      ScriptApp.newTrigger(editTriggerFn)
+               .forSpreadsheet(spreadsheet)
+               .onEdit()
+               .create();
+      editCreated = true;
+    }
+    
+    let msg = "";
+    if (openCreated && editCreated) {
+      msg = "Startup and Edit triggers have been successfully installed.";
+    } else if (openCreated) {
+      msg = "Startup trigger has been successfully installed (Edit trigger was already active).";
+    } else if (editCreated) {
+      msg = "Edit trigger has been successfully installed (Startup trigger was already active).";
+    } else {
+      msg = "Application is already initialized: All triggers are active.";
+    }
              
-    SpreadsheetApp.getUi().alert("Initialization Successful", "Biz Qops has been successfully ", SpreadsheetApp.getUi().ButtonSet.OK);
+    SpreadsheetApp.getUi().alert("Initialization Successful", msg, SpreadsheetApp.getUi().ButtonSet.OK);
   } catch (e) {
-    SpreadsheetApp.getUi().alert("Initialization Failed", "Error creating startup trigger: " + e.message, SpreadsheetApp.getUi().ButtonSet.OK);
+    SpreadsheetApp.getUi().alert("Initialization Failed", "Error creating triggers: " + e.message, SpreadsheetApp.getUi().ButtonSet.OK);
   }
 }
 
@@ -61,6 +89,15 @@ function appInit_setupInstallableTrigger() {
  */
 function appInit_onOpenInstallable(e) {
   showLoadingDialog_();
+}
+
+/**
+ * Installable trigger callback for edit events.
+ * Runs with full user authorizations, allowing opening configuration spreadsheets.
+ * @param {GoogleAppsScript.Events.SheetsOnEdit} e - The edit event object
+ */
+function appInit_onEditInstallable(e) {
+  RecordManager.processRecordEdit(e);
 }
 
 /**

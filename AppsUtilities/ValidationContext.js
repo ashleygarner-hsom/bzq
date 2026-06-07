@@ -37,8 +37,9 @@ class ValidationContext {
    * @param {string} sheetName - The edited sheet name
    * @param {SpreadsheetApp.Range} range - The edited range
    * @param {Object} objConfig - The object configuration record
+   * @param {boolean} forceValidation - If true, bypasses the check for required fields and applies validation rules
    */
-  static processRecordEdit(spreadsheet, sheetName, range, objConfig) {
+  static processRecordEdit(spreadsheet, sheetName, range, objConfig, forceValidation = false) {
     const sheet = spreadsheet.getSheetByName(sheetName);
     if (!sheet) return;
     
@@ -74,7 +75,7 @@ class ValidationContext {
       if (row <= headerNumber) continue;
       
       // Check if all primary/required fields are filled
-      const allFilled = this.checkPrimaryFieldsFilled_(sheet, row, primaryFields, headerIndices);
+      const allFilled = forceValidation || this.checkPrimaryFieldsFilled_(sheet, row, primaryFields, headerIndices);
       
       // If required fields are not filled, clear any validation on this row and stop processing
       if (!allFilled) {
