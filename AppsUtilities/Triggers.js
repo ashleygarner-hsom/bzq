@@ -3,10 +3,14 @@
  * Registers custom UI menus and displays a branded loading overlay.
  */
 function onOpen() {
-  const logoFileId = ConfigurationManager.getConfigValue("LOADING_LOGO");
   let logoUrl = "https://ssl.gstatic.com/images/branding/product/2x/sheets_2020q4_48dp.png";
-  if (logoFileId) {
-    logoUrl = "https://docs.google.com/uc?export=download&id=" + logoFileId;
+  try {
+    const logoFileId = ConfigurationManager.getConfigValue("LOADING_LOGO", false);
+    if (logoFileId) {
+      logoUrl = "https://docs.google.com/uc?export=download&id=" + logoFileId;
+    }
+  } catch (e) {
+    // Gracefully handle permissions exceptions in simple triggers when cache is cold
   }
   
   const template = HtmlService.createTemplateFromFile("Loading");
@@ -40,7 +44,19 @@ function triggerAddRecordToActivePage() {
 }
 
 /**
- * Server-side initialization step 1: Updates configuration cache.
+ * Server-side initialization step 1: Fetches the branded logo URL.
+ */
+function appInit_getLogoUrl() {
+  const logoFileId = ConfigurationManager.getConfigValue("LOADING_LOGO");
+  let logoUrl = "https://ssl.gstatic.com/images/branding/product/2x/sheets_2020q4_48dp.png";
+  if (logoFileId) {
+    logoUrl = "https://docs.google.com/uc?export=download&id=" + logoFileId;
+  }
+  return logoUrl;
+}
+
+/**
+ * Server-side initialization step 2: Updates configuration cache.
  */
 function appInit_updateCache() {
   ConfigurationManager.updateCachedConfigValues(false);
@@ -48,7 +64,7 @@ function appInit_updateCache() {
 }
 
 /**
- * Server-side initialization step 2: Pre-caches object configurations to warm up Script Cache.
+ * Server-side initialization step 3: Pre-caches object configurations to warm up Script Cache.
  */
 function appInit_preCacheObjects() {
   const sheetName = AppUtilitiesGlobalProperties.objectConfigurationSheetName_;
@@ -76,7 +92,7 @@ function appInit_preCacheObjects() {
 }
 
 /**
- * Server-side initialization step 3: Creates custom menus.
+ * Server-side initialization step 4: Creates custom menus.
  */
 function appInit_createMenus() {
   const ui = SpreadsheetApp.getUi();

@@ -37,6 +37,8 @@
         background: #1e293b;
         padding: 6px;
         box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+        opacity: 1;
+        transition: opacity 0.3s ease-in-out;
       }
       .spinner {
         width: 24px;
@@ -79,7 +81,7 @@
   <body>
     <div class="container">
       <div class="logo-wrapper">
-        <img class="logo" src="<?= logoUrl ?>" alt="Logo">
+        <img id="logo-img" class="logo" src="<?= logoUrl ?>" alt="Logo">
       </div>
       <img class="spinner" src="https://ssl.gstatic.com/docs/common/viewer/loading.gif" alt="Loading">
       <div class="title">Biz Qops Initializing</div>
@@ -91,7 +93,6 @@
 
     <script>
       window.onload = function() {
-        // Start sequential steps
         setTimeout(runStep1, 200);
       };
 
@@ -100,31 +101,64 @@
         document.getElementById('progress-bar').style.width = percent + '%';
       }
 
+      function changeLogo(newUrl, callback) {
+        const img = document.getElementById('logo-img');
+        
+        // If image src is already matched or no newUrl, continue
+        if (img.src === newUrl || !newUrl) {
+          if (callback) callback();
+          return;
+        }
+        
+        // Smooth cross-fade transition
+        img.style.opacity = '0';
+        setTimeout(function() {
+          img.onload = function() {
+            img.style.opacity = '1';
+            if (callback) callback();
+          };
+          img.src = newUrl;
+        }, 300);
+      }
+
       function runStep1() {
-        updateStatus('Updating configuration cache...', 20);
+        updateStatus('Loading branded logo...', 15);
         google.script.run
-          .withSuccessHandler(runStep2)
+          .withSuccessHandler(function(resolvedUrl) {
+            changeLogo(resolvedUrl, runStep2);
+          })
+          .withFailureHandler(function(err) {
+            console.warn('Failed to load custom logo:', err);
+            runStep2();
+          })
+          .appInit_getLogoUrl();
+      }
+
+      function runStep2() {
+        updateStatus('Updating configuration cache...', 40);
+        google.script.run
+          .withSuccessHandler(runStep3)
           .withFailureHandler(onError)
           .appInit_updateCache();
       }
 
-      function runStep2() {
-        updateStatus('Warming up business objects cache...', 60);
+      function runStep3() {
+        updateStatus('Warming up business objects cache...', 70);
         google.script.run
-          .withSuccessHandler(runStep3)
+          .withSuccessHandler(runStep4)
           .withFailureHandler(onError)
           .appInit_preCacheObjects();
       }
 
-      function runStep3() {
+      function runStep4() {
         updateStatus('Registering custom menus...', 90);
         google.script.run
-          .withSuccessHandler(runStep4)
+          .withSuccessHandler(runStep5)
           .withFailureHandler(onError)
           .appInit_createMenus();
       }
 
-      function runStep4() {
+      function runStep5() {
         updateStatus('Initialization complete!', 100);
         setTimeout(function() {
           google.script.host.close();
@@ -137,7 +171,6 @@
         document.getElementById('status-text').style.color = '#ef4444';
         document.getElementById('progress-bar').style.background = '#ef4444';
         
-        // Keep window open for 4 seconds on error so the user can read it, then auto-close
         setTimeout(function() {
           google.script.host.close();
         }, 4000);
