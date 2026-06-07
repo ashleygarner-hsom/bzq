@@ -1,28 +1,13 @@
 /**
  * Simple trigger that runs when a user opens the spreadsheet.
- * Registers custom UI menus and displays a branded loading overlay.
+ * Registers custom UI menus.
  */
 function onOpen() {
-  let logoUrl = "https://ssl.gstatic.com/images/branding/product/2x/sheets_2020q4_48dp.png";
-  try {
-    const logoFileId = ConfigurationManager.getConfigValue("LOADING_LOGO", false);
-    if (logoFileId) {
-      logoUrl = "https://docs.google.com/uc?export=download&id=" + logoFileId;
-    }
-  } catch (e) {
-    // Gracefully handle permissions exceptions in simple triggers when cache is cold
-  }
-  
-  const template = HtmlService.createTemplateFromFile("Loading");
-  template.logoUrl = logoUrl;
-  
-  const htmlOutput = template.evaluate()
-                              .setWidth(400)
-                              .setHeight(280)
-                              .setTitle(" ")
-                              .setSandboxMode(HtmlService.SandboxMode.IFRAME);
-  
-  SpreadsheetApp.getUi().showModalDialog(htmlOutput, " ");
+  const ui = SpreadsheetApp.getUi();
+  ui.createMenu('ManageBusiness')
+    .addItem('Add record to page', 'triggerAddRecordToActivePage')
+    .addItem('Initialize Application', 'appInit_setupInstallableTrigger')
+    .addToUi();
 }
 
 /**
@@ -41,6 +26,68 @@ function triggerAddRecordToActivePage() {
   const activeSheet = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
   const sheetName = activeSheet.getName();
   RecordManager.newRecord(sheetName);
+}
+
+/**
+ * Programmatically registers the installable trigger to run the loading overlay.
+ */
+function appInit_setupInstallableTrigger() {
+  const functionName = 'appInit_onOpenInstallable';
+  const spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
+  
+  try {
+    const triggers = ScriptApp.getUserTriggers(spreadsheet);
+    const triggerExists = triggers.some(t => t.getHandlerFunction() === functionName);
+    
+    if (triggerExists) {
+      SpreadsheetApp.getUi().alert("Initialization Status", "Application is already initialized: Startup trigger is active.", SpreadsheetApp.getUi().ButtonSet.OK);
+      return;
+    }
+    
+    ScriptApp.newTrigger(functionName)
+             .forSpreadsheet(spreadsheet)
+             .onOpen()
+             .create();
+             
+    SpreadsheetApp.getUi().alert("Initialization Successful", "The branded loading screen has been registered. It will display and lock spreadsheet interaction during initial cache warm-up on subsequent sheet opens.", SpreadsheetApp.getUi().ButtonSet.OK);
+  } catch (e) {
+    SpreadsheetApp.getUi().alert("Initialization Failed", "Error creating startup trigger: " + e.message, SpreadsheetApp.getUi().ButtonSet.OK);
+  }
+}
+
+/**
+ * Installable trigger callback.
+ * Runs with full user authorizations, allowing modal dialog display.
+ */
+function appInit_onOpenInstallable(e) {
+  showLoadingDialog_();
+}
+
+/**
+ * Internal helper to display the loading modal dialog.
+ * @private
+ */
+function showLoadingDialog_() {
+  let logoUrl = "https://ssl.gstatic.com/images/branding/product/2x/sheets_2020q4_48dp.png";
+  try {
+    const logoFileId = ConfigurationManager.getConfigValue("LOADING_LOGO", false);
+    if (logoFileId) {
+      logoUrl = "https://docs.google.com/uc?export=download&id=" + logoFileId;
+    }
+  } catch (e) {
+    // Ignore permissions issues
+  }
+  
+  const template = HtmlService.createTemplateFromFile("Loading");
+  template.logoUrl = logoUrl;
+  
+  const htmlOutput = template.evaluate()
+                              .setWidth(400)
+                              .setHeight(280)
+                              .setTitle(" ")
+                              .setSandboxMode(HtmlService.SandboxMode.IFRAME);
+  
+  SpreadsheetApp.getUi().showModalDialog(htmlOutput, " ");
 }
 
 /**
@@ -98,6 +145,7 @@ function appInit_createMenus() {
   const ui = SpreadsheetApp.getUi();
   ui.createMenu('ManageBusiness')
     .addItem('Add record to page', 'triggerAddRecordToActivePage')
+    .addItem('Initialize Application', 'appInit_setupInstallableTrigger')
     .addToUi();
   return true;
 }
