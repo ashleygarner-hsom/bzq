@@ -380,6 +380,47 @@ class ConfigurationManager {
     this.cache_.put(cacheKey, '___NULL___', 1500);
     return null;
   }
+  
+  /**
+   * Updates or inserts a configuration property value in the Configuration Properties sheet, and updates cache.
+   * @param {string} key - The configuration key
+   * @param {string} value - The configuration value
+   */
+  static setConfigValue(key, value) {
+    const configPropertySheetName = AppUtilitiesGlobalProperties.configurationPropertiesSheetName_;
+    const sheet = this.spreadsheet_.getSheetByName(configPropertySheetName);
+    if (!sheet) {
+      throw new Error(`Sheet '${configPropertySheetName}' not found in configuration workbook.`);
+    }
+    
+    const data = sheet.getDataRange().getValues();
+    let rowFound = -1;
+    for (let i = 1; i < data.length; i++) {
+      if (data[i][0] === key) {
+        rowFound = i + 1; // 1-based index
+        break;
+      }
+    }
+    
+    if (rowFound !== -1) {
+      sheet.getRange(rowFound, 2).setValue(value);
+    } else {
+      sheet.appendRow([key, value]);
+    }
+    
+    // Update script cache
+    const cacheKey = this.getCacheKey_(key);
+    this.cache_.put(cacheKey, String(value), 1500);
+  }
+}
+
+/**
+ * Global API wrapper: Sets a configuration property value
+ * @param {string} key - The configuration key
+ * @param {string} value - The configuration value
+ */
+function configurationManager_SetConfigValue(key, value) {
+  ConfigurationManager.setConfigValue(key, value);
 }
 /**
  * Retrieves all configuration keys and values, logs the current cached value, removes it, and adds the current value and logs the new value

@@ -4,10 +4,7 @@
  */
 function onOpen() {
   const ui = SpreadsheetApp.getUi();
-  ui.createMenu('ManageBusiness')
-    .addItem('Add record to page', 'triggerAddRecordToActivePage')
-    .addItem('Initialize Application', 'appInit_setupInstallableTrigger')
-    .addToUi();
+  buildManageBusinessMenu(ui);
 }
 
 /**
@@ -180,9 +177,50 @@ function appInit_preCacheObjects() {
  */
 function appInit_createMenus() {
   const ui = SpreadsheetApp.getUi();
+  buildManageBusinessMenu(ui);
+  return true;
+}
+
+/**
+ * Dynamically builds the custom menu for the application.
+ * @param {GoogleAppsScript.Base.Ui} ui - The Apps Script UI environment object
+ */
+function buildManageBusinessMenu(ui) {
+  const formattingSubMenu = ui.createMenu('Formatting')
+    .addItem('Set header format', 'triggerSetHeaderFormat')
+    .addItem('Set record format', 'triggerSetRecordFormat');
+    
   ui.createMenu('ManageBusiness')
     .addItem('Add record to page', 'triggerAddRecordToActivePage')
+    .addSubMenu(formattingSubMenu)
     .addItem('Initialize Application', 'appInit_setupInstallableTrigger')
     .addToUi();
-  return true;
+}
+
+/**
+ * Menu trigger to capture current active cell formatting and save it as HEADER_FORMAT.
+ */
+function triggerSetHeaderFormat() {
+  try {
+    const sheet = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
+    const activeRange = sheet.getActiveCell();
+    FormatManager.saveHeaderFormat(activeRange);
+    SpreadsheetApp.getUi().alert("Formatting", "Header format successfully saved from active cell.", SpreadsheetApp.getUi().ButtonSet.OK);
+  } catch (e) {
+    SpreadsheetApp.getUi().alert("Formatting Error", "Failed to save header format: " + e.message, SpreadsheetApp.getUi().ButtonSet.OK);
+  }
+}
+
+/**
+ * Menu trigger to capture current active cell formatting and save it as RECORD_FORMAT.
+ */
+function triggerSetRecordFormat() {
+  try {
+    const sheet = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
+    const activeRange = sheet.getActiveCell();
+    FormatManager.saveRecordFormat(activeRange);
+    SpreadsheetApp.getUi().alert("Formatting", "Record format successfully saved from active cell.", SpreadsheetApp.getUi().ButtonSet.OK);
+  } catch (e) {
+    SpreadsheetApp.getUi().alert("Formatting Error", "Failed to save record format: " + e.message, SpreadsheetApp.getUi().ButtonSet.OK);
+  }
 }

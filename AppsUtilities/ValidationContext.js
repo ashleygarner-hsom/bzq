@@ -74,12 +74,12 @@ class ValidationContext {
       const row = startRow + r;
       if (row <= headerNumber) continue;
       
-      // Check if all primary/required fields are filled
-      const allFilled = forceValidation || this.checkPrimaryFieldsFilled_(sheet, row, primaryFields, headerIndices);
+      // Check if all cell values in the row are empty (only clear validations if the row is entirely empty)
+      const allRowEmpty = !forceValidation && this.checkAllRowValuesEmpty_(sheet, row, lastCol);
       
-      // If required fields are not filled, clear any validation on this row and stop processing
-      if (!allFilled) {
-        LoggingManager.LogDebugMessage_(`Required fields not fully filled for row ${row}. Clearing data validations.`);
+      // If the row is entirely empty, clear any validation on this row and stop processing
+      if (allRowEmpty) {
+        LoggingManager.LogDebugMessage_(`Row ${row} is entirely empty. Clearing data validations.`);
         sheet.getRange(row, 1, 1, lastCol).clearDataValidations();
         continue;
       }
@@ -124,21 +124,18 @@ class ValidationContext {
   }
 
   /**
-   * Helper to check if all primary fields are populated for a given row.
+   * Helper to check if all cell values in a given row are empty.
    * @param {SpreadsheetApp.Sheet} sheet - The target sheet
    * @param {number} row - The row index to check
-   * @param {string[]} primaryFields - List of primary field column names
-   * @param {Object} headerIndices - Map of column names to 1-based indices
-   * @returns {boolean} True if all primary fields are filled, false otherwise
+   * @param {number} lastCol - The last column index of the sheet
+   * @returns {boolean} True if all cells in the row are empty, false otherwise
    * @private
    */
-  static checkPrimaryFieldsFilled_(sheet, row, primaryFields, headerIndices) {
-    for (const field of primaryFields) {
-      const colIndex = headerIndices[field];
-      if (!colIndex) continue;
-      
-      const val = sheet.getRange(row, colIndex).getValue();
-      if (val === "" || val === null || val === undefined) {
+  static checkAllRowValuesEmpty_(sheet, row, lastCol) {
+    if (lastCol <= 0) return true;
+    const values = sheet.getRange(row, 1, 1, lastCol).getValues()[0];
+    for (const val of values) {
+      if (val !== "" && val !== null && val !== undefined) {
         return false;
       }
     }
