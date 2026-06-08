@@ -49,6 +49,78 @@ class GlobalUtilities{
     });
     return obj;
   }
+  
+  /**
+   * Retrieves a property value from an Object's Datasheet via a lookup value.
+   * @param {string} objectName - Short or full name of the object
+   * @param {string|number} lookupValue - The value to look up in the left-most column
+   * @param {string} propertyName - The name of the property/header to retrieve
+   * @returns {any|null} The value of the property, or null if not found
+   */
+  static getObjectPropertyValue(objectName, lookupValue, propertyName) {
+    if (!objectName || lookupValue === undefined || lookupValue === null || !propertyName) {
+      return null;
+    }
+    
+    // Retrieve object configuration
+    let objConfig = ConfigurationManager.getObjectConfiguration(objectName, 'objectName');
+    if (!objConfig) {
+      objConfig = ConfigurationManager.getObjectConfiguration(objectName, 'object');
+    }
+    if (!objConfig) {
+      LoggingManager.LogError_(`Configuration not found for object '${objectName}'`);
+      return null;
+    }
+    
+    const spreadsheetId = objConfig["Spreadsheet Id"];
+    const sheetName = objConfig["Datasheet"];
+    const headerNumber = Number(objConfig["Header Number"]) || 1;
+    
+    if (!spreadsheetId || !sheetName) {
+      LoggingManager.LogError_(`Invalid spreadsheet ID or sheet name in configuration for object '${objectName}'`);
+      return null;
+    }
+    
+    try {
+      let spreadsheet;
+      const activeSpreadsheet = SpreadsheetApp.getActiveSpreadsheet();
+      if (spreadsheetId === activeSpreadsheet.getId()) {
+        spreadsheet = activeSpreadsheet;
+      } else {
+        spreadsheet = SpreadsheetApp.openById(spreadsheetId);
+      }
+      
+      const sheet = spreadsheet.getSheetByName(sheetName);
+      if (!sheet) {
+        LoggingManager.LogError_(`Sheet '${sheetName}' not found in workbook '${spreadsheetId}'`);
+        return null;
+      }
+      
+      const lastRow = sheet.getLastRow();
+      const lastCol = sheet.getLastColumn();
+      if (lastRow < headerNumber || lastCol < 1) {
+        return null;
+      }
+      
+      const data = sheet.getRange(headerNumber, 1, lastRow - headerNumber + 1, lastCol).getValues();
+      const headers = data[0].map(h => String(h).trim());
+      const targetColIndex = headers.indexOf(propertyName);
+      if (targetColIndex === -1) {
+        LoggingManager.LogError_(`Property '${propertyName}' not found in headers for sheet '${sheetName}'`);
+        return null;
+      }
+      
+      // Match the lookup value in the left-most column (index 0)
+      for (let i = 1; i < data.length; i++) {
+        if (String(data[i][0]).trim() === String(lookupValue).trim()) {
+          return data[i][targetColIndex];
+        }
+      }
+    } catch (err) {
+      LoggingManager.LogError_(`Error in getObjectPropertyValue: ` + err.message);
+    }
+    return null;
+  }
 }
 
 /**
@@ -70,4 +142,30 @@ function globalUtilities_GetColumnIndexOnSheet(spreadsheetId, sheetName, fieldNa
  */
 function globalUtilities_GetColumnLetter(spreadSheetId, sheetName, columnNumber){
   return GlobalUtilities.getColumnLetter(spreadSheetId, sheetName, columnNumber);
+}
+
+/**
+ * Retrieves a property value from an Object's Datasheet via a lookup value.
+ * Exposes this utility to spreadsheet users as a custom function.
+ * Note: When used as a custom formula in a cell, this function can only read from the active spreadsheet due to Apps Script permission restrictions.
+ *
+ * @param {string} objectName The short or full name of the object.
+ * @param {string} lookupValue The value to search for in the first column of the datasheet.
+ * @param {string} propertyName The header name of the column to retrieve the value from.
+ * @return {any} The value of the property from the matching record.
+ * @customfunction
+ */
+function GET_OBJECT_PROPERTY(objectName, lookupValue, propertyName) {
+  return GlobalUtilities.getObjectPropertyValue(objectName, lookupValue, propertyName);
+}
+
+/**
+ * Retrieves a property value from an Object's Datasheet via a lookup value.
+ * @param {string} objectName - Short or full name of the object
+ * @param {string|number} lookupValue - The value to look up in the left-most column
+ * @param {string} propertyName - The name of the property/header to retrieve
+ * @returns {any|null} The value of the property, or null if not found
+ */
+function globalUtilities_GetObjectPropertyValue(objectName, lookupValue, propertyName) {
+  return GlobalUtilities.getObjectPropertyValue(objectName, lookupValue, propertyName);
 }
