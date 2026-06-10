@@ -1,0 +1,55 @@
+<script>
+  const objectName = "<?= objectName ?>";
+
+  /**
+   * Asynchronously load the form content after layout renders
+   */
+  window.onload = function() {
+    google.script.run
+      .withSuccessHandler(function(html) {
+        document.getElementById('primary-body').innerHTML = html;
+      })
+      .withFailureHandler(function(err) {
+        document.getElementById('primary-body').innerHTML = '<div class="form-card" style="color: #ef4444;">Error loading form: ' + err.message + '</div>';
+      })
+      .formsEngine_getObjectForm(objectName);
+  };
+
+  /**
+   * Form submission handler
+   */
+  function submitForm() {
+    const form = document.getElementById('dynamicForm');
+    if (!form.reportValidity()) {
+      return; // Trigger native HTML5 validation UI
+    }
+    
+    const btn = document.querySelector('.btn-submit');
+    const originalText = btn.innerText;
+    btn.disabled = true;
+    btn.innerText = "Saving...";
+
+    const data = Object.fromEntries(new FormData(form).entries());
+    google.script.run
+      .withSuccessHandler(function() {
+        btn.disabled = false;
+        btn.innerText = originalText;
+        alert('Saved successfully!');
+        form.reset();
+      })
+      .withFailureHandler(function(error) {
+        btn.disabled = false;
+        btn.innerText = originalText;
+        
+        const timestamp = new Date().toLocaleString();
+        const userEmail = "User Email: " + "<?!= Session.getActiveUser().getEmail() ?>"; 
+        const message = "Oops! Something went wrong.\n\n" +
+                        "Error Details: " + error.message + "\n" +
+                        userEmail + "\n" +
+                        "Timestamp: " + timestamp + "\n\n" +
+                        "Please reach out to support with the information above for assistance.";
+        alert(message);
+      })
+      .processFormSubmission(data, objectName);
+  }
+</script>

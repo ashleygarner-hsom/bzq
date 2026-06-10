@@ -1,0 +1,44 @@
+<div class="form-card">
+  <form id="dynamicForm">
+    <? fields.forEach(function(f) { ?>
+      <div class="field-container">
+        <label><?= f.displayName ?></label>
+        
+        <? if (f.type === 'LOOKUP') { ?>
+          <select name="<?= f.field ?>">
+            <option value="" disabled selected>Select an option...</option>
+            <? f.options.forEach(function(opt) { ?>
+              <option value="<?= opt ?>"><?= opt ?></option>
+            <? }); ?>
+          </select>
+          
+        <? } else if (f.type === 'AUTOID') { ?>
+          <!-- AUTOID is generated upon submission -->
+          <input type="text" placeholder="(Auto-Generated on Submission)" disabled style="background-color: #f1f5f9; color: #64748b; font-weight: 500;" />
+          
+        <? } else { ?>
+          <input name="<?= f.field ?>" 
+                 type="<?= getHtmlType(f.type) ?>" 
+                 <?= getValidationAttrs(f.validation) ?> />
+        <? } ?>
+      </div>
+    <? }); ?>
+    
+    <button type="button" class="btn-submit" onclick="submitForm()">Submit</button>
+  </form>
+</div>
+
+<?
+function getHtmlType(type) {
+  const map = { 'DATE': 'date', 'NUMBER': 'number', 'CURRENCY': 'number' };
+  return map[type] || 'text';
+}
+
+function getValidationAttrs(v) {
+  if (v === 'EMAIL') return 'type="email" required';
+  if (v === 'PHONE') return 'pattern="[0-9]{3}-[0-9]{3}-[0-9]{4}" placeholder="123-456-7890"';
+  if (v === 'USD') return 'step="0.01"';
+  if (v === 'PERCENT') return 'min="0" max="100" step="1"';
+  return '';
+}
+?>
