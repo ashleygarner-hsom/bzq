@@ -412,6 +412,160 @@ class ConfigurationManager {
     const cacheKey = this.getCacheKey_(key);
     this.cache_.put(cacheKey, String(value), 1500);
   }
+
+  /**
+   * Updates cached object configurations from the __ObjectConfiguration sheet.
+   */
+  static updateCachedObjectConfigurations() {
+    const sheetName = AppUtilitiesGlobalProperties.objectConfigurationSheetName_;
+    const data = this.getSheetData_(sheetName);
+    if (!data || data.length < 2) return;
+    
+    const headers = data[0];
+    const objCol = headers.findIndex(h => String(h).trim().toLowerCase() === 'object');
+    const objNameCol = headers.findIndex(h => String(h).trim().toLowerCase() === 'object name');
+    const dsCol = headers.findIndex(h => String(h).trim().toLowerCase() === 'datasheet');
+    
+    for (let i = 1; i < data.length; i++) {
+      const row = data[i];
+      const record = GlobalUtilities.getRowDataAsObject(headers, row);
+      const jsonStr = JSON.stringify(record);
+      
+      if (objCol !== -1 && row[objCol]) {
+        const key = this.getCacheKey_(`obj_full_${this.sanitizeCacheKey_(row[objCol])}`);
+        this.cache_.put(key, jsonStr, 1500);
+      }
+      if (objNameCol !== -1 && row[objNameCol]) {
+        const key = this.getCacheKey_(`obj_${this.sanitizeCacheKey_(row[objNameCol])}`);
+        this.cache_.put(key, jsonStr, 1500);
+      }
+      if (dsCol !== -1 && row[dsCol]) {
+        const key = this.getCacheKey_(`obj_ds_${this.sanitizeCacheKey_(row[dsCol])}`);
+        this.cache_.put(key, jsonStr, 1500);
+      }
+    }
+  }
+
+  /**
+   * Updates cached lookup configurations from the __LookupConfiguration sheet.
+   */
+  static updateCachedLookupConfigurations() {
+    const sheetName = AppUtilitiesGlobalProperties.lookupConfigurationSheetName_;
+    const data = this.getSheetData_(sheetName);
+    if (!data || data.length < 2) return;
+    
+    const headers = data[0];
+    let sourceColIndex = headers.findIndex(h => String(h).trim().toLowerCase() === 'source object');
+    if (sourceColIndex === -1) sourceColIndex = 0;
+    
+    const lookupGroups = {};
+    for (let i = 1; i < data.length; i++) {
+      const row = data[i];
+      const sourceObj = String(row[sourceColIndex]).trim();
+      if (!sourceObj) continue;
+      
+      if (!lookupGroups[sourceObj]) {
+        lookupGroups[sourceObj] = [];
+      }
+      lookupGroups[sourceObj].push(GlobalUtilities.getRowDataAsObject(headers, row));
+    }
+    
+    // Clear and put new cache entries
+    for (const sourceObj in lookupGroups) {
+      const cacheKey = this.getCacheKey_(`lookup_${this.sanitizeCacheKey_(sourceObj)}`);
+      this.cache_.put(cacheKey, JSON.stringify(lookupGroups[sourceObj]), 1500);
+    }
+  }
+
+  /**
+   * Updates cached dropdown configurations from the __DropdownConfiguration sheet.
+   */
+  static updateCachedDropdownConfigurations() {
+    const sheetName = AppUtilitiesGlobalProperties.dropdownConfigurationSheetName_;
+    const data = this.getSheetData_(sheetName);
+    if (!data || data.length < 2) return;
+    
+    const headers = data[0];
+    let dropdownColIndex = headers.findIndex(h => String(h).trim().toLowerCase() === 'dropdown name');
+    let objectColIndex = headers.findIndex(h => {
+      const s = String(h).trim().toLowerCase();
+      return s === 'object' || s === 'object name';
+    });
+    if (dropdownColIndex === -1) dropdownColIndex = 2;
+    if (objectColIndex === -1) objectColIndex = 3;
+    
+    const dropdownGroups = {};
+    for (let i = 1; i < data.length; i++) {
+      const row = data[i];
+      const dropdownName = String(row[dropdownColIndex]).trim();
+      const objectName = String(row[objectColIndex]).trim();
+      if (!dropdownName || !objectName) continue;
+      
+      const record = GlobalUtilities.getRowDataAsObject(headers, row);
+      const singleKey = this.getCacheKey_(`dropdown_${this.sanitizeCacheKey_(objectName)}_${this.sanitizeCacheKey_(dropdownName)}`);
+      this.cache_.put(singleKey, JSON.stringify(record), 1500);
+      
+      if (!dropdownGroups[objectName]) {
+        dropdownGroups[objectName] = [];
+      }
+      dropdownGroups[objectName].push(record);
+    }
+    
+    for (const objectName in dropdownGroups) {
+      const cacheKey = this.getCacheKey_(`dropdowns_${this.sanitizeCacheKey_(objectName)}`);
+      this.cache_.put(cacheKey, JSON.stringify(dropdownGroups[objectName]), 1500);
+    }
+  }
+
+  /**
+   * Updates cached global dropdown configurations from the __GlobalDropdownConfiguration sheet.
+   */
+  static updateCachedGlobalDropdownConfigurations() {
+    const sheetName = AppUtilitiesGlobalProperties.globalDropdownConfigurationSheetName_;
+    const data = this.getSheetData_(sheetName);
+    if (!data || data.length < 2) return;
+    
+    const headers = data[0];
+    let globalColIndex = headers.findIndex(h => String(h).trim().toLowerCase() === 'global dropdown name');
+    if (globalColIndex === -1) globalColIndex = 2;
+    
+    for (let i = 1; i < data.length; i++) {
+      const row = data[i];
+      const globalDropdownName = String(row[globalColIndex]).trim();
+      if (!globalDropdownName) continue;
+      
+      const record = GlobalUtilities.getRowDataAsObject(headers, row);
+      const cacheKey = this.getCacheKey_(`global_dropdown_${this.sanitizeCacheKey_(globalDropdownName)}`);
+      this.cache_.put(cacheKey, JSON.stringify(record), 1500);
+    }
+  }
+
+  /**
+   * Cycles through all configuration worksheets and resets/updates all cached configurations.
+   */
+  static resetAllCacheValues() {
+    // 1. Reset configuration properties
+    this.updateCachedConfigValues(false);
+    
+    // 2. Reset object configurations
+    this.updateCachedObjectConfigurations();
+    
+    // 3. Reset lookup configurations
+    this.updateCachedLookupConfigurations();
+    
+    // 4. Reset dropdown configurations
+    this.updateCachedDropdownConfigurations();
+    
+    // 5. Reset global dropdown configurations
+    this.updateCachedGlobalDropdownConfigurations();
+  }
+}
+
+/**
+ * Global API wrapper: Resets/updates all cached configurations.
+ */
+function configurationManager_ResetAllCacheValues() {
+  ConfigurationManager.resetAllCacheValues();
 }
 
 /**

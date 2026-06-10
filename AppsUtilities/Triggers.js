@@ -190,10 +190,14 @@ function buildManageBusinessMenu(ui) {
     .addItem('Set header format', 'triggerSetHeaderFormat')
     .addItem('Set record format', 'triggerSetRecordFormat');
     
+  const adminSubMenu = ui.createMenu('Admin')
+    .addItem('Initialize Application', 'appInit_setupInstallableTrigger')
+    .addItem('Reset Configuration Cache', 'triggerResetConfigurationCache')
+    .addSubMenu(formattingSubMenu);
+    
   ui.createMenu('ManageBusiness')
     .addItem('Add record to page', 'triggerAddRecordToActivePage')
-    .addSubMenu(formattingSubMenu)
-    .addItem('Initialize Application', 'appInit_setupInstallableTrigger')
+    .addSubMenu(adminSubMenu)
     .addToUi();
 }
 
@@ -222,5 +226,17 @@ function triggerSetRecordFormat() {
     SpreadsheetApp.getUi().alert("Formatting", "Record format successfully saved from active cell.", SpreadsheetApp.getUi().ButtonSet.OK);
   } catch (e) {
     SpreadsheetApp.getUi().alert("Formatting Error", "Failed to save record format: " + e.message, SpreadsheetApp.getUi().ButtonSet.OK);
+  }
+}
+
+/**
+ * Menu trigger to reset all cached configurations from their source sheets.
+ */
+function triggerResetConfigurationCache() {
+  try {
+    ConfigurationManager.resetAllCacheValues();
+    SpreadsheetApp.getUi().alert("Cache Reset", "Configuration cache successfully reset and updated.", SpreadsheetApp.getUi().ButtonSet.OK);
+  } catch (e) {
+    SpreadsheetApp.getUi().alert("Cache Error", "Failed to reset cache: " + e.message, SpreadsheetApp.getUi().ButtonSet.OK);
   }
 }

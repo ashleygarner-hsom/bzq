@@ -52,17 +52,70 @@ class GlobalUtilities{
   
   /**
    * Retrieves a property value from an Object's Datasheet via a lookup value.
+   * Supports both single values and 2D arrays (useful inside ARRAYFORMULA).
    * @param {string} objectName - Short or full name of the object
-   * @param {string|number} lookupValue - The value to look up in the left-most column
+   * @param {string|number|any[][]} lookupValue - The single value or 2D array of values to look up
    * @param {string} propertyName - The name of the property/header to retrieve
-   * @returns {any|null} The value of the property, or null if not found
+   * @returns {any|any[][]|null} The resolved property value(s), or null if not found
    */
   static getObjectPropertyValue(objectName, lookupValue, propertyName) {
     if (!objectName || lookupValue === undefined || lookupValue === null || !propertyName) {
       return null;
     }
     
-    // Retrieve object configuration
+    const isArray = Array.isArray(lookupValue);
+    const getFallback = () => isArray ? lookupValue.map(row => (Array.isArray(row) ? row.map(() => null) : null)) : null;
+    
+    const sheetInfo = this.getDatasheetData_(objectName);
+    if (!sheetInfo) {
+      return getFallback();
+    }
+    
+    const { sheetName, headers, data } = sheetInfo;
+    const targetColIndex = headers.indexOf(propertyName);
+    if (targetColIndex === -1) {
+      LoggingManager.LogError_(`Property '${propertyName}' not found in headers for sheet '${sheetName}'`);
+      return getFallback();
+    }
+    
+    // Build an in-memory lookup map from the left-most column (index 0) to the target value
+    const lookupMap = {};
+    for (let i = 1; i < data.length; i++) {
+      const key = String(data[i][0]).trim();
+      if (key) {
+        lookupMap[key] = data[i][targetColIndex];
+      }
+    }
+    
+    // Resolve value(s) using the lookup map
+    if (isArray) {
+      return lookupValue.map(row => {
+        if (Array.isArray(row)) {
+          return row.map(cell => {
+            const lookupKey = String(cell).trim();
+            const val = lookupMap[lookupKey];
+            return val !== undefined ? val : null;
+          });
+        } else {
+          const lookupKey = String(row).trim();
+          const val = lookupMap[lookupKey];
+          return val !== undefined ? val : null;
+        }
+      });
+    } else {
+      const lookupKey = String(lookupValue).trim();
+      const val = lookupMap[lookupKey];
+      return val !== undefined ? val : null;
+    }
+  }
+
+  /**
+   * Retrieves headers and row data for an object's datasheet.
+   * @param {string} objectName - Short or full name of the object
+   * @returns {Object|null} Object containing { sheetName, headers, data } or null if not found/error
+   * @private
+   */
+  static getDatasheetData_(objectName) {
     let objConfig = ConfigurationManager.getObjectConfiguration(objectName, 'objectName');
     if (!objConfig) {
       objConfig = ConfigurationManager.getObjectConfiguration(objectName, 'object');
@@ -103,21 +156,12 @@ class GlobalUtilities{
       }
       
       const data = sheet.getRange(headerNumber, 1, lastRow - headerNumber + 1, lastCol).getValues();
-      const headers = data[0].map(h => String(h).trim());
-      const targetColIndex = headers.indexOf(propertyName);
-      if (targetColIndex === -1) {
-        LoggingManager.LogError_(`Property '${propertyName}' not found in headers for sheet '${sheetName}'`);
-        return null;
-      }
+      if (data.length === 0) return null;
       
-      // Match the lookup value in the left-most column (index 0)
-      for (let i = 1; i < data.length; i++) {
-        if (String(data[i][0]).trim() === String(lookupValue).trim()) {
-          return data[i][targetColIndex];
-        }
-      }
+      const headers = data[0].map(h => String(h).trim());
+      return { sheetName, headers, data };
     } catch (err) {
-      LoggingManager.LogError_(`Error in getObjectPropertyValue: ` + err.message);
+      LoggingManager.LogError_(`Error in getDatasheetData_: ` + err.message);
     }
     return null;
   }
