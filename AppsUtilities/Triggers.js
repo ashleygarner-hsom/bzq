@@ -195,10 +195,38 @@ function buildManageBusinessMenu(ui) {
     .addItem('Reset Configuration Cache', 'triggerResetConfigurationCache')
     .addSubMenu(formattingSubMenu);
     
-  ui.createMenu('ManageBusiness')
-    .addItem('Add record to page', 'triggerAddRecordToActivePage')
-    .addSubMenu(adminSubMenu)
+  const mainMenu = ui.createMenu('ManageBusiness')
+    .addItem('Add record to page', 'triggerAddRecordToActivePage');
+    
+  // Dynamic submenu loading if FormsEngine is enabled
+  addFormsEngineSubMenuIfEnabled_(ui, mainMenu);
+    
+  mainMenu.addSubMenu(adminSubMenu)
     .addToUi();
+}
+
+/**
+ * Helper to dynamically load and add the Entry Forms submenu if FormsEngine is enabled.
+ * Resolves the FormsEngine namespace inside the container script scope.
+ * @param {GoogleAppsScript.Base.Ui} ui - The spreadsheet UI object
+ * @param {GoogleAppsScript.Base.Menu} mainMenu - The parent menu object
+ * @private
+ */
+function addFormsEngineSubMenuIfEnabled_(ui, mainMenu) {
+  try {
+    const formsEngineEnabled = ConfigurationManager.getConfigValue("FORMS_ENGINE_ENABLED", false);
+    if (formsEngineEnabled && String(formsEngineEnabled).toUpperCase() === 'TRUE') {
+      const formsEngineLib = this["FormsEngine"];
+      if (formsEngineLib && typeof formsEngineLib.formsEngine_buildEntryFormsMenu === 'function') {
+        const entryFormsMenu = formsEngineLib.formsEngine_buildEntryFormsMenu(ui);
+        if (entryFormsMenu) {
+          mainMenu.addSubMenu(entryFormsMenu);
+        }
+      }
+    }
+  } catch (e) {
+    LoggingManager.LogError_("Failed to dynamically load FormsEngine menu: " + e.message);
+  }
 }
 
 /**

@@ -1,15 +1,15 @@
 /**
- * The Record Manager provides utilities for managing the creation of records.
- * Record Manager handles calling the relevant sub methods for managing id sequences and triggering evaluation of validation
+ * The Record Manager coordinates the creation, modification, and persistence of data records.
+ * It handles resolving ID sequences, formatting rows, and triggering validation checks.
  */
-class RecordManager{
+class RecordManager {
   /**
-   * Call this method when a new record is being entered.  It coordinates calling other services needed during record creation
-   * @input {string} sheetName - Name of the data sheet where new record is being created
-   * @input {boolean} isForForm - Set to true if being called from the Forms Engine, this will skip triggering adding the record to the sheet and running the validation context since that will be triggered via form submission
-   * @returns {string|null} Returns the next sequence id if isForForm is true, otherwise nothing is directly returned
+   * Retrieves the object configuration, spreadsheet, and sheet by sheet name.
+   * @param {string} sheetName - The name of the datasheet
+   * @returns {Object} Config, spreadsheet, and sheet instances
+   * @private
    */
-  static newRecord(sheetName, isForForm = false){
+  static getSheetAndConfig_(sheetName) {
     const objConfig = ConfigurationManager.getObjectConfiguration(sheetName, 'datasheetName');
     if (!objConfig) {
       throw new Error(`Configuration not found for sheet ${sheetName}`);
@@ -20,23 +20,78 @@ class RecordManager{
     if (!sheet) {
       throw new Error(`Sheet ${sheetName} not found in workbook.`);
     }
+    return { objConfig, spreadsheet, sheet };
+  }
+
+  /**
+   * Finalizes a newly created record row by applying formatting and validation rules.
+   * @param {SpreadsheetApp.Spreadsheet} spreadsheet - The parent spreadsheet
+   * @param {SpreadsheetApp.Sheet} sheet - The target sheet
+   * @param {number} row - The row index of the new record
+   * @param {Object} objConfig - The object configuration record
+   * @private
+   */
+  static finalizeNewRecordRow_(spreadsheet, sheet, row, objConfig) {
+    const sheetName = sheet.getName();
+    // Apply row formatting
+    FormatManager.formatRow(sheet, row, objConfig);
+    
+    // Apply validation rules immediately, ignoring empty primary fields check
+    const lastCol = sheet.getLastColumn() || 1;
+    const validationRange = sheet.getRange(row, 1, 1, lastCol);
+    ValidationContext.processRecordEdit(spreadsheet, sheetName, validationRange, objConfig, true);
+  }
+
+  /**
+   * Call this method when a new record is being entered from the spreadsheet grid.
+   * Coordinates sequence retrieval, styling, and validation triggers.
+   * @param {string} sheetName - Name of the datasheet where the new record is created
+   * @param {boolean} isForForm - Set to true if called from Forms Engine to bypass sheet insertion
+   * @returns {string|null} The next sequence ID if isForForm is true, otherwise null
+   */
+  static newRecord(sheetName, isForForm = false) {
+    const { objConfig, spreadsheet, sheet } = this.getSheetAndConfig_(sheetName);
     const newRecordNumber = SequenceManager.processSequenceForObject(sheetName);
     if (isForForm) {
       return newRecordNumber;
     }
+    
     const lastDataRow = sheet.getLastRow() + 1;
     const recordIdRange = this.getIdCellRange_(sheet, lastDataRow, objConfig);
     if (recordIdRange) {
       recordIdRange.setValue(newRecordNumber);
     }
     
-    // Apply formatting to the new record row
-    FormatManager.formatRow(sheet, lastDataRow, objConfig);
+    this.finalizeNewRecordRow_(spreadsheet, sheet, lastDataRow, objConfig);
+    return null;
+  }
+
+  /**
+   * Adds a new record to the sheet associated with the given object type.
+   * Resolves the AUTOID sequence value, appends the record, formats the new row,
+   * and runs the validation manager.
+   * @param {string} objectType - Name of the object type (correlates to the datasheet name)
+   * @param {Object} recordData - The object representing the fields and values of the record to add
+   * @returns {string} Success confirmation message
+   */
+  static addRecord(objectType, recordData) {
+    const { objConfig, spreadsheet, sheet } = this.getSheetAndConfig_(objectType);
+
+    // Call SequenceManager to generate the next sequence value if the ID field is empty
+    const idFieldName = objConfig["Id Field Name"];
+    if (idFieldName && (!recordData[idFieldName] || recordData[idFieldName] === "")) {
+      recordData[idFieldName] = SequenceManager.processSequenceForObject(objectType);
+    }
+
+    const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+    const newRow = headers.map(header => recordData[header] || "");
     
-    // Apply validation rules to the new row immediately, ignoring the empty primary fields check
-    const lastCol = sheet.getLastColumn() || 1;
-    const validationRange = sheet.getRange(lastDataRow, 1, 1, lastCol);
-    ValidationContext.processRecordEdit(spreadsheet, sheetName, validationRange, objConfig, true);
+    // Append the row to the sheet
+    sheet.appendRow(newRow);
+    const lastRow = sheet.getLastRow();
+
+    this.finalizeNewRecordRow_(spreadsheet, sheet, lastRow, objConfig);
+    return "Success!";
   }
 
   /**
@@ -178,26 +233,38 @@ class RecordManager{
     return true;
   }
 }
+
 /**
- * For the provided sheetName (plural of object) generates the next sequence value and adds it to the requested sheet for entry from the sheet view
- * @input {string} sheetName - Name of the data sheet that a user is creating a new record in.
+ * For the provided sheetName (plural of object) generates the next sequence value and adds it to the requested sheet.
+ * @param {string} sheetName - Name of the data sheet that a user is creating a new record in.
  */
-function newRecord(sheetName){
+function newRecord(sheetName) {
   RecordManager.newRecord(sheetName);
 }
+
 /**
  * Validates and increments sequence for the provided sheetName's Id.
- * Once a sequence value is requested it cannot be decremented and will be lost, resulting in the value being skipped
- * @input {string} sheetName - The sheetName is also the plural of the underlying data objects
+ * @param {string} sheetName - The sheetName is also the plural of the underlying data objects
  * @returns {string} The next Id to use for the requested object
  */
-function requestRecordIdForForm(sheetName){
+function requestRecordIdForForm(sheetName) {
   return RecordManager.newRecord(sheetName, true);
 }
+
 /**
  * Processes record edits on watched sheets, routing them to the validation context.
  * @param {GoogleAppsScript.Events.SheetsOnEdit} e - The onEdit event object
  */
 function recordManager_processRecordEdit(e) {
   RecordManager.processRecordEdit(e);
+}
+
+/**
+ * Global wrapper to add a new record to the sheet for the given object type.
+ * @param {string} objectType - The name of the object type (sheet name)
+ * @param {Object} recordData - Key-value pair object representing record fields
+ * @returns {string} Success message
+ */
+function recordManager_addRecord(objectType, recordData) {
+  return RecordManager.addRecord(objectType, recordData);
 }
