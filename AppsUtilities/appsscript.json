@@ -1,6 +1,15 @@
 {
   "timeZone": "America/Chicago",
-  "dependencies": {},
   "exceptionLogging": "STACKDRIVER",
-  "runtimeVersion": "V8"
+  "runtimeVersion": "V8",
+  "dependencies": {
+    "libraries": [
+      {
+        "userSymbol": "FormsEngine",
+        "version": "0",
+        "libraryId": "12KlTGCao0iLOAwB0QaBpn-MWcveFUifSgOQCCJpXRtUPtajUdje8uzSi",
+        "developmentMode": true
+      }
+    ]
+  }
 }

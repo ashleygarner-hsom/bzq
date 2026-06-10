@@ -115,43 +115,80 @@ class FormsEngine {
    * @returns {GoogleAppsScript.Base.Menu} The constructed Entry Forms submenu
    */
   static buildEntryFormsMenu(ui) {
+    AppsUtilities.loggingManager_LogDebugMessage("FormsEngine: buildEntryFormsMenu starting...");
     const menu = ui.createMenu('Entry Forms');
     const globalScope = globalThis;
     
-    // Add default trigger to open form for active sheet
-    const defaultFnName = "formsEngine_openActiveSheetForm";
-    globalScope[defaultFnName] = function() {
-      const activeSheetName = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet().getName();
-      formsEngine_doGetForm(activeSheetName);
-    };
-    menu.addItem('Open Form for Active Sheet', defaultFnName);
+    // Check if FormsEngine is running as a library
+    const isLibrary = (typeof globalScope["formsEngine_buildEntryFormsMenu"] !== 'function');
+    const prefix = isLibrary ? "FormsEngine." : "";
+    AppsUtilities.loggingManager_LogDebugMessage("FormsEngine: isLibrary=" + isLibrary + ", prefix=" + prefix);
     
+    // Add default trigger to open form for active sheet (uses statically defined wrapper)
+    const defaultFnName = prefix + "formsEngine_openActiveSheetForm";
+    menu.addItem('Open Form for Active Sheet', defaultFnName);
+    AppsUtilities.loggingManager_LogDebugMessage("FormsEngine: Added default active sheet form menu item.");
+    
+    let enabledForms = null;
     try {
-      const formsList = SpreadsheetApp.openById(FormsEngineGlobalProperties.formsEngineWorkbookId_)
-                                      .getSheetByName(FormsEngineGlobalProperties.formsListSheetName_)
-                                      .getDataRange()
-                                      .getValues();
-      for (let i = 1; i < formsList.length; i++) {
-        const objectName = formsList[i][2];
-        const formName = formsList[i][3];
-        const isEnabled = formsList[i][4];
-        if (isEnabled && objectName && formName) {
-          const fnName = "formsEngine_openForm_" + formName.replace(/[^a-zA-Z0-9]/g, "_");
-          
-          // Dynamically define callback function on globalScope
+      const cached = CacheService.getScriptCache().get("config_forms_list");
+      if (cached) {
+        enabledForms = JSON.parse(cached);
+        AppsUtilities.loggingManager_LogDebugMessage("FormsEngine: Successfully loaded forms list from cache.");
+      }
+    } catch (e) {
+      AppsUtilities.loggingManager_LogError("FormsEngine: Failed to read forms list from cache: " + e.message);
+    }
+    
+    if (!enabledForms) {
+      try {
+        const workbookId = FormsEngineGlobalProperties.formsEngineWorkbookId_;
+        const sheetName = FormsEngineGlobalProperties.formsListSheetName_;
+        AppsUtilities.loggingManager_LogDebugMessage("FormsEngine: Cache cold. Querying forms list from workbook ID: " + workbookId + ", sheet: " + sheetName);
+        
+        const formsList = SpreadsheetApp.openById(workbookId)
+                                        .getSheetByName(sheetName)
+                                        .getDataRange()
+                                        .getValues();
+        AppsUtilities.loggingManager_LogDebugMessage("FormsEngine: Successfully fetched forms list from sheet. Row count: " + formsList.length);
+        
+        enabledForms = [];
+        for (let i = 1; i < formsList.length; i++) {
+          const objectName = formsList[i][2];
+          const formName = formsList[i][3];
+          const isEnabled = formsList[i][4];
+          if (isEnabled && objectName && formName) {
+            enabledForms.push({ objectName, formName });
+          }
+        }
+        
+        // Save to cache
+        CacheService.getScriptCache().put("config_forms_list", JSON.stringify(enabledForms), 1500);
+        AppsUtilities.loggingManager_LogDebugMessage("FormsEngine: Saved enabled forms list to script cache.");
+      } catch (e) {
+        AppsUtilities.loggingManager_LogError("FormsEngine: Failed to query enabled forms list from sheet: " + e.message);
+      }
+    }
+    
+    if (enabledForms) {
+      enabledForms.forEach(f => {
+        const fnName = "formsEngine_openForm_" + f.formName.replace(/[^a-zA-Z0-9]/g, "_");
+        const fullFnName = prefix + fnName;
+        AppsUtilities.loggingManager_LogDebugMessage(`FormsEngine: Adding menu item ${f.formName} calling ${fullFnName}`);
+        
+        if (!isLibrary) {
           globalScope[fnName] = (function(obj) {
             return function() {
               formsEngine_doGetForm(obj);
             };
-          })(objectName);
-          
-          menu.addItem(formName, fnName);
+          })(f.objectName);
         }
-      }
-    } catch (e) {
-      AppsUtilities.loggingManager_LogDebugMessage("Failed to query enabled forms list for menu: " + e.message);
+        
+        menu.addItem(f.formName, fullFnName);
+      });
     }
     
+    AppsUtilities.loggingManager_LogDebugMessage("FormsEngine: buildEntryFormsMenu completed and returning menu.");
     return menu;
   }
 }
@@ -211,3 +248,107 @@ function formsEngine_getObjectForm(objectName) {
 function formsEngine_buildEntryFormsMenu(ui) {
   return FormsEngine.buildEntryFormsMenu(ui);
 }
+
+/**
+ * Global wrapper to open a form for the active sheet.
+ */
+function formsEngine_openActiveSheetForm() {
+  const activeSheetName = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet().getName();
+  formsEngine_doGetForm(activeSheetName);
+}
+
+/**
+ * Shared menu item callback handler.
+ * Resolves the target form and opens it using the index.
+ * Runs with AuthMode.FULL since it is invoked on user click.
+ * @param {number} index - The index of the menu option clicked
+ */
+function formsEngine_openFormByIndex(index) {
+  try {
+    let forms = null;
+    const cachedForms = CacheService.getScriptCache().get("config_forms_list");
+    if (cachedForms) {
+      forms = JSON.parse(cachedForms);
+    } else {
+      // Fallback: Cache is cold/expired. Query the spreadsheet to rebuild it.
+      const workbookId = FormsEngineGlobalProperties.formsEngineWorkbookId_;
+      const sheetName = FormsEngineGlobalProperties.formsListSheetName_;
+      if (workbookId && sheetName) {
+        const formsList = SpreadsheetApp.openById(workbookId)
+                                        .getSheetByName(sheetName)
+                                        .getDataRange()
+                                        .getValues();
+        forms = [];
+        for (let i = 1; i < formsList.length; i++) {
+          const objectName = formsList[i][2];
+          const formName = formsList[i][3];
+          const isEnabled = formsList[i][4];
+          if (isEnabled && objectName && formName) {
+            forms.push({ objectName, formName });
+          }
+        }
+        CacheService.getScriptCache().put("config_forms_list", JSON.stringify(forms), 1500);
+      }
+    }
+
+    if (forms && index >= 0 && index < forms.length) {
+      formsEngine_doGetForm(forms[index].objectName);
+    } else {
+      throw new Error("Selected form configuration could not be resolved. Please reload the spreadsheet.");
+    }
+  } catch (e) {
+    SpreadsheetApp.getUi().alert("Error Opening Form", "Failed to open form: " + e.message, SpreadsheetApp.getUi().ButtonSet.OK);
+  }
+}
+
+// Static menu callback wrapper pool (0-49)
+function formsEngine_openForm_0() { formsEngine_openFormByIndex(0); }
+function formsEngine_openForm_1() { formsEngine_openFormByIndex(1); }
+function formsEngine_openForm_2() { formsEngine_openFormByIndex(2); }
+function formsEngine_openForm_3() { formsEngine_openFormByIndex(3); }
+function formsEngine_openForm_4() { formsEngine_openFormByIndex(4); }
+function formsEngine_openForm_5() { formsEngine_openFormByIndex(5); }
+function formsEngine_openForm_6() { formsEngine_openFormByIndex(6); }
+function formsEngine_openForm_7() { formsEngine_openFormByIndex(7); }
+function formsEngine_openForm_8() { formsEngine_openFormByIndex(8); }
+function formsEngine_openForm_9() { formsEngine_openFormByIndex(9); }
+function formsEngine_openForm_10() { formsEngine_openFormByIndex(10); }
+function formsEngine_openForm_11() { formsEngine_openFormByIndex(11); }
+function formsEngine_openForm_12() { formsEngine_openFormByIndex(12); }
+function formsEngine_openForm_13() { formsEngine_openFormByIndex(13); }
+function formsEngine_openForm_14() { formsEngine_openFormByIndex(14); }
+function formsEngine_openForm_15() { formsEngine_openFormByIndex(15); }
+function formsEngine_openForm_16() { formsEngine_openFormByIndex(16); }
+function formsEngine_openForm_17() { formsEngine_openFormByIndex(17); }
+function formsEngine_openForm_18() { formsEngine_openFormByIndex(18); }
+function formsEngine_openForm_19() { formsEngine_openFormByIndex(19); }
+function formsEngine_openForm_20() { formsEngine_openFormByIndex(20); }
+function formsEngine_openForm_21() { formsEngine_openFormByIndex(21); }
+function formsEngine_openForm_22() { formsEngine_openFormByIndex(22); }
+function formsEngine_openForm_23() { formsEngine_openFormByIndex(23); }
+function formsEngine_openForm_24() { formsEngine_openFormByIndex(24); }
+function formsEngine_openForm_25() { formsEngine_openFormByIndex(25); }
+function formsEngine_openForm_26() { formsEngine_openFormByIndex(26); }
+function formsEngine_openForm_27() { formsEngine_openFormByIndex(27); }
+function formsEngine_openForm_28() { formsEngine_openFormByIndex(28); }
+function formsEngine_openForm_29() { formsEngine_openFormByIndex(29); }
+function formsEngine_openForm_30() { formsEngine_openFormByIndex(30); }
+function formsEngine_openForm_31() { formsEngine_openFormByIndex(31); }
+function formsEngine_openForm_32() { formsEngine_openFormByIndex(32); }
+function formsEngine_openForm_33() { formsEngine_openFormByIndex(33); }
+function formsEngine_openForm_34() { formsEngine_openFormByIndex(34); }
+function formsEngine_openForm_35() { formsEngine_openFormByIndex(35); }
+function formsEngine_openForm_36() { formsEngine_openFormByIndex(36); }
+function formsEngine_openForm_37() { formsEngine_openFormByIndex(37); }
+function formsEngine_openForm_38() { formsEngine_openFormByIndex(38); }
+function formsEngine_openForm_39() { formsEngine_openFormByIndex(39); }
+function formsEngine_openForm_40() { formsEngine_openFormByIndex(40); }
+function formsEngine_openForm_41() { formsEngine_openFormByIndex(41); }
+function formsEngine_openForm_42() { formsEngine_openFormByIndex(42); }
+function formsEngine_openForm_43() { formsEngine_openFormByIndex(43); }
+function formsEngine_openForm_44() { formsEngine_openFormByIndex(44); }
+function formsEngine_openForm_45() { formsEngine_openFormByIndex(45); }
+function formsEngine_openForm_46() { formsEngine_openFormByIndex(46); }
+function formsEngine_openForm_47() { formsEngine_openFormByIndex(47); }
+function formsEngine_openForm_48() { formsEngine_openFormByIndex(48); }
+function formsEngine_openForm_49() { formsEngine_openFormByIndex(49); }

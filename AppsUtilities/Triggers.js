@@ -1,10 +1,12 @@
 /**
  * Simple trigger that runs when a user opens the spreadsheet.
  * Registers custom UI menus.
+ * @param {Object} [containerScope] - The calling script's global scope (if invoked from a container script library delegation)
  */
-function onOpen() {
+function onOpen(containerScope) {
+  LoggingManager.LogDebugMessage_("AppsUtilities: simple trigger onOpen running...");
   const ui = SpreadsheetApp.getUi();
-  buildManageBusinessMenu(ui);
+  buildManageBusinessMenu(ui, containerScope);
 }
 
 /**
@@ -174,18 +176,21 @@ function appInit_preCacheObjects() {
 
 /**
  * Server-side initialization step 4: Creates custom menus.
+ * @param {Object} [containerScope] - The calling script's global scope (if invoked from library delegation)
  */
-function appInit_createMenus() {
+function appInit_createMenus(containerScope) {
   const ui = SpreadsheetApp.getUi();
-  buildManageBusinessMenu(ui);
+  buildManageBusinessMenu(ui, containerScope);
   return true;
 }
 
 /**
  * Dynamically builds the custom menu for the application.
  * @param {GoogleAppsScript.Base.Ui} ui - The Apps Script UI environment object
+ * @param {Object} [containerScope] - The container scope containing globally defined libraries/methods
  */
-function buildManageBusinessMenu(ui) {
+function buildManageBusinessMenu(ui, containerScope) {
+  LoggingManager.LogDebugMessage_("AppsUtilities: buildManageBusinessMenu starting...");
   const formattingSubMenu = ui.createMenu('Formatting')
     .addItem('Set header format', 'triggerSetHeaderFormat')
     .addItem('Set record format', 'triggerSetRecordFormat');
@@ -199,10 +204,11 @@ function buildManageBusinessMenu(ui) {
     .addItem('Add record to page', 'triggerAddRecordToActivePage');
     
   // Dynamic submenu loading if FormsEngine is enabled
-  addFormsEngineSubMenuIfEnabled_(ui, mainMenu);
+  addFormsEngineSubMenuIfEnabled_(ui, mainMenu, containerScope);
     
   mainMenu.addSubMenu(adminSubMenu)
     .addToUi();
+  LoggingManager.LogDebugMessage_("AppsUtilities: buildManageBusinessMenu completed and added to UI.");
 }
 
 /**
@@ -210,22 +216,45 @@ function buildManageBusinessMenu(ui) {
  * Resolves the FormsEngine namespace inside the container script scope.
  * @param {GoogleAppsScript.Base.Ui} ui - The spreadsheet UI object
  * @param {GoogleAppsScript.Base.Menu} mainMenu - The parent menu object
+ * @param {Object} [containerScope] - The container scope containing globally defined libraries/methods
  * @private
  */
-function addFormsEngineSubMenuIfEnabled_(ui, mainMenu) {
+function addFormsEngineSubMenuIfEnabled_(ui, mainMenu, containerScope) {
+  LoggingManager.LogDebugMessage_("AppsUtilities: Checking if FormsEngine submenu should be added...");
   try {
     const formsEngineEnabled = ConfigurationManager.getConfigValue("FORMS_ENGINE_ENABLED", false);
+    LoggingManager.LogDebugMessage_("AppsUtilities: FORMS_ENGINE_ENABLED cache/config value: " + formsEngineEnabled);
     if (formsEngineEnabled && String(formsEngineEnabled).toUpperCase() === 'TRUE') {
-      const formsEngineLib = this["FormsEngine"];
+      const scope = containerScope || this;
+      const formsEngineLib = scope["FormsEngine"];
+      LoggingManager.LogDebugMessage_("AppsUtilities: formsEngineLib on resolved scope: " + (formsEngineLib ? "defined" : "undefined"));
+      
+      let buildMenuFn = null;
       if (formsEngineLib && typeof formsEngineLib.formsEngine_buildEntryFormsMenu === 'function') {
-        const entryFormsMenu = formsEngineLib.formsEngine_buildEntryFormsMenu(ui);
+        LoggingManager.LogDebugMessage_("AppsUtilities: buildMenuFn resolved from FormsEngine library.");
+        buildMenuFn = formsEngineLib.formsEngine_buildEntryFormsMenu.bind(formsEngineLib);
+      } else if (typeof scope["formsEngine_buildEntryFormsMenu"] === 'function') {
+        LoggingManager.LogDebugMessage_("AppsUtilities: buildMenuFn resolved from local scope.");
+        buildMenuFn = scope["formsEngine_buildEntryFormsMenu"];
+      } else {
+        LoggingManager.LogError_("AppsUtilities: Could not find buildEntryFormsMenu in library or global scopes. Type of formsEngine_buildEntryFormsMenu on resolved scope: " + typeof scope["formsEngine_buildEntryFormsMenu"]);
+      }
+      
+      if (buildMenuFn) {
+        LoggingManager.LogDebugMessage_("AppsUtilities: Invoking buildEntryFormsMenu function...");
+        const entryFormsMenu = buildMenuFn(ui);
         if (entryFormsMenu) {
           mainMenu.addSubMenu(entryFormsMenu);
+          LoggingManager.LogDebugMessage_("AppsUtilities: Entry Forms submenu successfully attached.");
+        } else {
+          LoggingManager.LogError_("AppsUtilities: buildMenuFn returned null/undefined.");
         }
       }
+    } else {
+      LoggingManager.LogDebugMessage_("AppsUtilities: FormsEngine is disabled.");
     }
   } catch (e) {
-    LoggingManager.LogError_("Failed to dynamically load FormsEngine menu: " + e.message);
+    LoggingManager.LogError_("AppsUtilities: Failed to dynamically load FormsEngine menu: " + e.message + "\nStack: " + e.stack);
   }
 }
 

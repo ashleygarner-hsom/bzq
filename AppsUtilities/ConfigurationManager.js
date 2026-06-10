@@ -5,8 +5,11 @@ class ConfigurationManager {
   /**Reference to the configuration properties spreadsheet*/
   static get spreadsheet_() {
     const workbookId = AppUtilitiesGlobalProperties.configurationPropertiesWorkbookId_;
-    const spreadsheet = SpreadsheetApp.openById(workbookId);
-    return spreadsheet;
+    try {
+      return SpreadsheetApp.openById(workbookId);
+    } catch (e) {
+      throw new Error("Insufficient permissions to open configuration workbook. Please select 'ManageBusiness' -> 'Admin' -> 'Reset Configuration Cache' to warm up the configuration cache.");
+    }
   };
   /**Referece to the google sheets app scripts script cache */
   static get cache_() {

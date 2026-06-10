@@ -51,7 +51,7 @@ class SequenceManager {
     
     if (!sequenceRow) {
       const errorMsg = `Sequence configuration row not found for datasheet name '${dataSheetName}'.`;
-      console.error(errorMsg);
+      LoggingManager.LogError_(errorMsg);
       throw new Error(errorMsg);
     }
     

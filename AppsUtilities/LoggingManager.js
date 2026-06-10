@@ -7,11 +7,18 @@ class LoggingManager {
    * @param {string} messaage - The string to log to the execution console
    */
   static LogDebugMessage_(message){
-    const debugMode = ConfigurationManager.getConfigValue("DEBUG_MODE", false);
-    if (!debugMode) {
+    let debugMode = false;
+    try {
+      const configVal = ConfigurationManager.getConfigValue("DEBUG_MODE", false);
+      debugMode = (configVal && String(configVal).toUpperCase() === 'TRUE');
+    } catch (e) {
+      // Fallback for restricted contexts (e.g. simple triggers, custom functions)
+      console.log("[Debug] " + message);
       return;
     }
-    console.log(message);
+    if (debugMode) {
+      console.log(message);
+    }
     return;
   }
   /**
