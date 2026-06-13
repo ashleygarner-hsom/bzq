@@ -9,16 +9,26 @@ class RecordManager {
    * @returns {Object} Config, spreadsheet, and sheet instances
    * @private
    */
-  static getSheetAndConfig_(sheetName) {
-    const objConfig = ConfigurationManager.getObjectConfiguration(sheetName, 'datasheetName');
+  /**
+   * Retrieves the object configuration, spreadsheet, and sheet by sheet name or object name.
+   * @param {string} sheetNameOrObjectName - The name of the datasheet or the object
+   * @returns {Object} Config, spreadsheet, and sheet instances
+   * @private
+   */
+  static getSheetAndConfig_(sheetNameOrObjectName) {
+    let objConfig = ConfigurationManager.getObjectConfiguration(sheetNameOrObjectName, 'datasheetName');
     if (!objConfig) {
-      throw new Error(`Configuration not found for sheet ${sheetName}`);
+      objConfig = ConfigurationManager.getObjectConfiguration(sheetNameOrObjectName, 'objectName');
     }
+    if (!objConfig) {
+      throw new Error(`Configuration not found for sheet or object ${sheetNameOrObjectName}`);
+    }
+    const datasheetName = objConfig["Datasheet"];
     const spreadsheetId = objConfig["Spreadsheet Id"];
     const spreadsheet = SpreadsheetApp.openById(spreadsheetId);
-    const sheet = spreadsheet.getSheetByName(sheetName);
+    const sheet = spreadsheet.getSheetByName(datasheetName);
     if (!sheet) {
-      throw new Error(`Sheet ${sheetName} not found in workbook.`);
+      throw new Error(`Sheet ${datasheetName} not found in workbook.`);
     }
     return { objConfig, spreadsheet, sheet };
   }
@@ -51,7 +61,8 @@ class RecordManager {
    */
   static newRecord(sheetName, isForForm = false) {
     const { objConfig, spreadsheet, sheet } = this.getSheetAndConfig_(sheetName);
-    const newRecordNumber = SequenceManager.processSequenceForObject(sheetName);
+    const datasheetName = objConfig["Datasheet"];
+    const newRecordNumber = SequenceManager.processSequenceForObject(datasheetName);
     if (isForForm) {
       return newRecordNumber;
     }
@@ -70,17 +81,18 @@ class RecordManager {
    * Adds a new record to the sheet associated with the given object type.
    * Resolves the AUTOID sequence value, appends the record, formats the new row,
    * and runs the validation manager.
-   * @param {string} objectType - Name of the object type (correlates to the datasheet name)
+   * @param {string} objectType - Name of the object type (correlates to the datasheet name or object name)
    * @param {Object} recordData - The object representing the fields and values of the record to add
    * @returns {string} Success confirmation message
    */
   static addRecord(objectType, recordData) {
     const { objConfig, spreadsheet, sheet } = this.getSheetAndConfig_(objectType);
+    const datasheetName = objConfig["Datasheet"];
 
     // Call SequenceManager to generate the next sequence value if the ID field is empty
     const idFieldName = objConfig["Id Field Name"];
     if (idFieldName && (!recordData[idFieldName] || recordData[idFieldName] === "")) {
-      recordData[idFieldName] = SequenceManager.processSequenceForObject(objectType);
+      recordData[idFieldName] = SequenceManager.processSequenceForObject(datasheetName);
     }
 
     const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];

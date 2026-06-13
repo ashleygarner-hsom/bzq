@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <base target="_top">
+    <!-- Google Font & Accent Styling matching Forms layout -->
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+      :root {
+        --primary-color: #6366f1;
+        --primary-hover: #4f46e5;
+        --bg-start: #f8fafc;
+        --bg-end: #f1f5f9;
+        --card-bg: rgba(255, 255, 255, 0.85);
+        --text-main: #0f172a;
+        --text-muted: #64748b;
+        --border-color: #e2e8f0;
+        --focus-ring: rgba(99, 102, 241, 0.25);
+      }
+
+      body {
+        font-family: 'Outfit', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        background: linear-gradient(180deg, var(--bg-start) 0%, var(--bg-end) 100%);
+        color: var(--text-main);
+        margin: 0;
+        padding: 0;
+        min-height: 100vh;
+        display: flex;
+        flex-direction: column;
+      }
+
+      .container {
+        padding: 16px;
+        flex: 1;
+      }
+
+      /* Loader styles */
+      #loader {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        padding: 60px 20px;
+        color: var(--text-muted);
+        font-size: 14px;
+        gap: 12px;
+      }
+
+      .spinner {
+        width: 36px;
+        height: 36px;
+        border: 3px solid var(--border-color);
+        border-top-color: var(--primary-color);
+        border-radius: 50%;
+        animation: spin 1s cubic-bezier(0.55, 0.15, 0.45, 0.85) infinite;
+      }
+
+      @keyframes spin {
+        to { transform: rotate(360deg); }
+      }
+
+      /* Card styling */
+      .form-card {
+        background: var(--card-bg);
+        backdrop-filter: blur(12px);
+        -webkit-backdrop-filter: blur(12px);
+        border: 1px solid rgba(255, 255, 255, 0.6);
+        border-radius: 16px;
+        padding: 20px;
+        box-shadow: 0 4px 20px -2px rgba(15, 23, 42, 0.08), 
+                    0 2px 8px -1px rgba(15, 23, 42, 0.04);
+        animation: slideUp 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+      }
+
+      @keyframes slideUp {
+        from {
+          opacity: 0;
+          transform: translateY(12px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+
+      /* Form elements shared classes */
+      .field-container {
+        margin-bottom: 18px;
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+      }
+
+      label {
+        font-size: 13px;
+        font-weight: 600;
+        color: var(--text-main);
+        letter-spacing: 0.2px;
+      }
+
+      select {
+        font-family: inherit;
+        font-size: 14px;
+        padding: 10px 12px;
+        border: 1px solid var(--border-color);
+        border-radius: 10px;
+        background-color: #ffffff;
+        color: var(--text-main);
+        outline: none;
+        transition: all 0.2s ease-in-out;
+        box-shadow: inset 0 1px 2px rgba(15, 23, 42, 0.02);
+        width: 100%;
+        box-sizing: border-box;
+      }
+
+      select:focus {
+        border-color: var(--primary-color);
+        box-shadow: inset 0 1px 2px rgba(15, 23, 42, 0.02),
+                    0 0 0 3px var(--focus-ring);
+      }
+
+      /* Submission Button styling */
+      .btn-submit {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        width: 100%;
+        padding: 12px;
+        border: none;
+        border-radius: 10px;
+        background: linear-gradient(135deg, var(--primary-color) 0%, var(--primary-hover) 100%);
+        color: #ffffff;
+        font-size: 14px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+        box-shadow: 0 4px 12px -2px rgba(99, 102, 241, 0.3);
+        margin-top: 24px;
+      }
+
+      .btn-submit:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 6px 16px -2px rgba(99, 102, 241, 0.4);
+      }
+
+      .btn-submit:active {
+        transform: translateY(0);
+        box-shadow: 0 2px 6px -1px rgba(99, 102, 241, 0.3);
+      }
+    </style>
+  </head>
+  <body>
+    <!-- Branded Header -->
+    <div id="header-container"><?!= formsEngine_include('Header'); ?></div>
+
+    <div class="container">
+      <div id="primary-body">
+        <div id="loader">
+          <div class="spinner"></div>
+          <div>Loading available forms...</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Branded Footer -->
+    <div id="footer-container"><?!= formsEngine_include('Footer'); ?></div>
+
+    <script>
+      // Load available forms on start
+      window.onload = function() {
+        google.script.run
+          .withSuccessHandler(renderFormPicker)
+          .withFailureHandler(handleLoadError)
+          .formsEngine_getEnabledFormsList();
+      };
+
+      function renderFormPicker(forms) {
+        const body = document.getElementById('primary-body');
+        if (!forms || forms.length === 0) {
+          body.innerHTML = '<div style="color: var(--text-muted); text-align: center; padding: 20px;">No entry forms are currently enabled.</div>';
+          return;
+        }
+
+        let selectOptions = '';
+        forms.forEach(f => {
+          selectOptions += `<option value="${f.objectName}">${f.formName}</option>`;
+        });
+
+        body.innerHTML = `
+          <div class="form-card">
+            <div class="field-container">
+              <label for="form-select">Select a form to open:</label>
+              <select id="form-select">
+                ${selectOptions}
+              </select>
+            </div>
+            <button class="btn-submit" onclick="onFormSelected()">Open Form</button>
+          </div>
+        `;
+      }
+
+      function handleLoadError(err) {
+        const body = document.getElementById('primary-body');
+        body.innerHTML = `<div style="color: #ef4444; text-align: center; padding: 20px;">Error loading forms: ${err.message}</div>`;
+      }
+
+      function onFormSelected() {
+        const select = document.getElementById('form-select');
+        const objectName = select.value;
+        if (objectName) {
+          google.script.run.formsEngine_doGetForm(objectName);
+        }
+      }
+    </script>
+  </body>
+</html>
