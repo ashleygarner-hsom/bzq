@@ -31,6 +31,27 @@ class ValidationContext {
   }
 
   /**
+   * Reruns validation for a selected range in a sheet.
+   * @param {SpreadsheetApp.Spreadsheet} spreadsheet - The active spreadsheet
+   * @param {SpreadsheetApp.Sheet} sheet - The active sheet
+   * @param {SpreadsheetApp.Range} range - The selected range to validate
+   */
+  static validateSelectedRange(spreadsheet, sheet, range) {
+    const sheetName = sheet.getName();
+    const objConfig = ConfigurationManager.getObjectConfiguration(sheetName, 'datasheetName');
+    if (!objConfig) {
+      throw new Error(`This sheet is not configured for validation.`);
+    }
+    const enabled = String(objConfig["Enabled For Validation"]).toUpperCase() === 'TRUE';
+    if (!enabled) {
+      throw new Error(`Validation is not enabled for this sheet in the configuration.`);
+    }
+    
+    // We pass forceValidation = true to ensure validations are applied to the selected rows
+    this.processRecordEdit(spreadsheet, sheetName, range, objConfig, true);
+  }
+
+  /**
    * Processes validation and dynamic rules configuration for edited row(s) in a sheet.
    * Clears validations for any row where required fields are not fully filled.
    * @param {SpreadsheetApp.Spreadsheet} spreadsheet - The active spreadsheet
@@ -143,6 +164,58 @@ class ValidationContext {
   }
 
   /**
+   * Resolves the column name for a lookup configuration.
+   * @param {Object} lookup - The lookup configuration record
+   * @returns {string|null} The column name, or null if not found
+   * @private
+   */
+  static getTargetColumnName_(lookup) {
+    const targetColName = lookup["Column Name"];
+    if (targetColName) return targetColName;
+    
+    const targetObjName = lookup["Target Object"];
+    const targetConfig = ConfigurationManager.getObjectConfiguration(targetObjName, 'object');
+    return targetConfig ? targetConfig["Object Name"] : null;
+  }
+
+  /**
+   * Retrieves the validation range for a given target object, creating and populating helper sheets if needed.
+   * @param {string} targetObjName - The full name of the target object
+   * @param {string} currentSpreadsheetId - The ID of the current active spreadsheet
+   * @param {SpreadsheetApp.Spreadsheet} spreadsheet - The active spreadsheet object
+   * @returns {SpreadsheetApp.Range|null} The validation range, or null if not found
+   * @private
+   */
+  static retrieveValidationRange_(targetObjName, currentSpreadsheetId, spreadsheet) {
+    if (this.doesWorkbookNeedHelperSheet(targetObjName, currentSpreadsheetId)) {
+      // Cross-workbook lookup: needs a helper sheet
+      if (!this.doesHelperSheetExist(targetObjName, currentSpreadsheetId)) {
+        this.createHelperSheet(targetObjName, currentSpreadsheetId);
+      }
+      this.populateHelperSheet(targetObjName, currentSpreadsheetId);
+      
+      const helperSheetName = this.getHelperRangeSheetName(targetObjName);
+      const helperSheet = spreadsheet.getSheetByName(helperSheetName);
+      if (helperSheet) {
+        return this.getDataSheetObjectValidationRange(targetObjName, helperSheetName, currentSpreadsheetId);
+      } else {
+        throw new Error(`Helper sheet ${helperSheetName} not found for object ${targetObjName}`);
+      }
+    } else {
+      // Native workbook lookup: reference the target datasheet directly
+      try {
+        const targetSheetName = this.getObjectSheetName_(targetObjName);
+        if (targetSheetName) {
+          return this.getDataSheetObjectValidationRange(targetObjName, targetSheetName, currentSpreadsheetId);
+        }
+      } catch (err) {
+        LoggingManager.LogError_(`Failed to build target validation range for lookup: ${err.message}`);
+      }
+    }
+    return null;
+  }
+
+  /**
    * Applies validation rule for a configured lookup to a cell in a row.
    * @param {SpreadsheetApp.Sheet} sheet - The active sheet
    * @param {number} row - The row index
@@ -154,56 +227,14 @@ class ValidationContext {
    */
   static applyLookupValidation_(sheet, row, lookup, headerIndices, currentSpreadsheetId, spreadsheet) {
     const targetObjName = lookup["Target Object"]; // Full name
-    let targetColName = lookup["Column Name"];
-    
-    // Default target column name to target object's short name if empty
-    if (!targetColName) {
-      const targetConfig = ConfigurationManager.getObjectConfiguration(targetObjName, 'object');
-      if (targetConfig) {
-        targetColName = targetConfig["Object Name"];
-      }
-    }
-    
+    const targetColName = this.getTargetColumnName_(lookup);
     if (!targetColName) return;
+    
     const colIndex = headerIndices[targetColName];
     if (!colIndex) return;
     
     const targetCell = sheet.getRange(row, colIndex);
-    const targetConfig = ConfigurationManager.getObjectConfiguration(targetObjName, 'object');
-    if (!targetConfig) return;
-    
-    const targetSpreadsheetId = targetConfig["Spreadsheet Id"];
-    let validationRange = null;
-    
-    if (targetSpreadsheetId && targetSpreadsheetId !== currentSpreadsheetId) {
-      // Cross-workbook lookup: needs a helper sheet
-      if (!this.doesHelperSheetExist(targetObjName, currentSpreadsheetId)) {
-        this.createHelperSheet(targetObjName, currentSpreadsheetId);
-      }
-      this.populateHelperSheet(targetObjName, currentSpreadsheetId);
-      
-      const helperSheetName = this.getHelperRangeSheetName(targetObjName);
-      const helperSheet = spreadsheet.getSheetByName(helperSheetName);
-      if (helperSheet) {
-        validationRange = helperSheet.getRange("A2:A");
-      }
-    } else {
-      // Native workbook lookup: reference the target datasheet directly
-      try {
-        const targetSheetName = this.getObjectSheetName_(targetObjName);
-        const targetSheet = spreadsheet.getSheetByName(targetSheetName);
-        if (targetSheet) {
-          const primaryColumnIndex = GlobalUtilities.getColumnIndexOnSheet(currentSpreadsheetId, targetSheetName, targetConfig["Object Name"], Number(targetConfig["Header Number"]) || 1);
-          const headerRow = Number(targetConfig["Header Number"]) || 1;
-          const lastRow = targetSheet.getLastRow();
-          if (lastRow > headerRow) {
-            validationRange = targetSheet.getRange(headerRow + 1, primaryColumnIndex, lastRow - headerRow, 1);
-          }
-        }
-      } catch (err) {
-        LoggingManager.LogError_(`Failed to build target validation range for lookup: ${err.message}`);
-      }
-    }
+    const validationRange = this.retrieveValidationRange_(targetObjName, currentSpreadsheetId, spreadsheet);
     
     if (validationRange) {
       const rule = SpreadsheetApp.newDataValidation()
@@ -388,18 +419,19 @@ class ValidationContext {
   /**
    * Retrieves a 1 column range containing all cells with the requested object's lookup values
    * @param {string} objectName - The name of the business object, which is also the singular of the sheet
+   * @param {string} sheetName - Optional: The name of the datasheet to use for validation, use when requesting for a helper sheet
    * @returns {SpreadsheetApp.Range} The 1 column range including the header
    */
-  static getDataSheetObjectValidationRange(objectName) {
+  static getDataSheetObjectValidationRange(objectName, sheetName = null, spreadsheetId = null) {
     objectName ?? (() => { throw new Error("Object name not provided"); })();
     const config = this.getObjectConfig_(objectName);
     if (!config) throw new Error(`Object configuration not found for ${objectName}`);
     
-    const spreadsheetId = config["Spreadsheet Id"];
-    const sheetName = config["Datasheet"];
+    spreadsheetId = spreadsheetId ?? config["Spreadsheet Id"];
+    sheetName = sheetName ?? config["Datasheet"];
     const spreadsheet = SpreadsheetApp.openById(spreadsheetId);
     const sheet = spreadsheet.getSheetByName(sheetName);
-    const rangeAddress = this.getDataSheetObjectValidationRangeAddress(objectName);
+    const rangeAddress = this.getDataSheetObjectValidationRangeAddress(objectName, sheetName, spreadsheetId);
     const range = sheet.getRange(rangeAddress);
     LoggingManager.LogDebugMessage_(`Length of range found ${range.getNumRows()}`);
     return range;
@@ -408,15 +440,17 @@ class ValidationContext {
   /**
    * Retrieves the A1 notation address of the range containing the header and values for lookups of the provided object
    * @param {string} objectName - The name of the lookup object - note not the sheet name
+   * @param {string} sheetName - Optional: The name of the datasheet to use for validation, use when requesting validation using a helper sheet
+   * @param {string} spreadsheetId - Optional: The ID of the spreadsheet, defaults to the object's configured spreadsheet ID if not provided
    * @returns {string} The A1 notation cell address to use for lookup of the object values, including the header
    */
-  static getDataSheetObjectValidationRangeAddress(objectName){
+  static getDataSheetObjectValidationRangeAddress(objectName, sheetName = null, spreadsheetId = null){
     objectName ?? (() => { throw new Error("Object name not provided"); })();
     const config = this.getObjectConfig_(objectName);
     if (!config) throw new Error(`Object configuration not found for ${objectName}`);
     
-    const spreadsheetId = config["Spreadsheet Id"];
-    const sheetName = config["Datasheet"];
+    spreadsheetId = spreadsheetId ?? config["Spreadsheet Id"];
+    sheetName = sheetName ?? config["Datasheet"];
     const headerNum = Number(config["Header Number"]) || 1;
     const shortName = config["Object Name"];
     

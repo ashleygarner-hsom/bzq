@@ -1,0 +1,21 @@
+{
+  "timeZone": "America/Chicago",
+  "dependencies": {
+    "libraries": [
+      {
+        "userSymbol": "AppsUtilities",
+        "version": "0",
+        "libraryId": "1KsqYmH746evWxO20E850u_JFcUlRZW-jQsTz5CY7m-UpriQXNa8_xYnY",
+        "developmentMode": true
+      },
+      {
+        "userSymbol": "FormsEngine",
+        "version": "0",
+        "libraryId": "12KlTGCao0iLOAwB0QaBpn-MWcveFUifSgOQCCJpXRtUPtajUdje8uzSi",
+        "developmentMode": true
+      }
+    ]
+  },
+  "exceptionLogging": "STACKDRIVER",
+  "runtimeVersion": "V8"
+}

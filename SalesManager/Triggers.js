@@ -1,5 +1,5 @@
 /**
- * Simple trigger that runs when the Forms Engine spreadsheet opens.
+ * Simple trigger that runs when the Sales Manager spreadsheet opens.
  * Delegates custom menu creation to the AppsUtilities core library.
  */
 function onOpen() {
@@ -7,7 +7,7 @@ function onOpen() {
 }
 
 /**
- * Simple trigger that runs when a cell is edited in the Forms Engine spreadsheet.
+ * Simple trigger that runs when a cell is edited in the Sales Manager spreadsheet.
  * Delegates processing to the AppsUtilities core library.
  * @param {GoogleAppsScript.Events.SheetsOnEdit} e - The edit event object
  */
@@ -20,6 +20,13 @@ function onEdit(e) {
  */
 function triggerAddRecordToActivePage() {
   AppsUtilities.triggerAddRecordToActivePage();
+}
+
+/**
+ * Forwarding callback for the "Validate Selected" utility.
+ */
+function triggerValidateSelectedRows() {
+  AppsUtilities.triggerValidateSelectedRows();
 }
 
 /**
@@ -93,11 +100,3 @@ function appInit_preCacheObjects() {
 function appInit_createMenus() {
   return AppsUtilities.appInit_createMenus(this);
 }
-
-/**
- * Forwarding callback for the "Validate Selected" utility.
- */
-function triggerValidateSelectedRows() {
-  AppsUtilities.triggerValidateSelectedRows();
-}
-

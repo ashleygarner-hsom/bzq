@@ -195,6 +195,9 @@ function buildManageBusinessMenu(ui, containerScope) {
     .addItem('Set header format', 'triggerSetHeaderFormat')
     .addItem('Set record format', 'triggerSetRecordFormat');
     
+  const utilitiesSubMenu = ui.createMenu('Utilities')
+    .addItem('Validate Selected', 'triggerValidateSelectedRows');
+
   const adminSubMenu = ui.createMenu('Admin')
     .addItem('Initialize Application', 'appInit_setupInstallableTrigger')
     .addItem('Reset Configuration Cache', 'triggerResetConfigurationCache')
@@ -206,7 +209,8 @@ function buildManageBusinessMenu(ui, containerScope) {
   // Dynamic submenu loading if FormsEngine is enabled
   addFormsEngineSubMenuIfEnabled_(ui, mainMenu, containerScope);
     
-  mainMenu.addSubMenu(adminSubMenu)
+  mainMenu.addSubMenu(utilitiesSubMenu)
+    .addSubMenu(adminSubMenu)
     .addToUi();
   LoggingManager.LogDebugMessage_("AppsUtilities: buildManageBusinessMenu completed and added to UI.");
 }
@@ -295,5 +299,22 @@ function triggerResetConfigurationCache() {
     SpreadsheetApp.getUi().alert("Cache Reset", "Configuration cache successfully reset and updated.", SpreadsheetApp.getUi().ButtonSet.OK);
   } catch (e) {
     SpreadsheetApp.getUi().alert("Cache Error", "Failed to reset cache: " + e.message, SpreadsheetApp.getUi().ButtonSet.OK);
+  }
+}
+
+/**
+ * Menu trigger to rerun validation on currently selected rows in the active sheet.
+ */
+function triggerValidateSelectedRows() {
+  try {
+    const spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
+    const sheet = spreadsheet.getActiveSheet();
+    const activeRange = sheet.getActiveRange();
+    
+    ValidationContext.validateSelectedRange(spreadsheet, sheet, activeRange);
+    
+    SpreadsheetApp.getUi().alert("Validation Complete", "Validation successfully rerun for the selected rows.", SpreadsheetApp.getUi().ButtonSet.OK);
+  } catch (e) {
+    SpreadsheetApp.getUi().alert("Validation Error", "Failed to rerun validation: " + e.message, SpreadsheetApp.getUi().ButtonSet.OK);
   }
 }
