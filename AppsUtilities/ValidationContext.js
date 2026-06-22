@@ -398,7 +398,16 @@ class ValidationContext {
    * @returns {string} The concatenated name as a string
    */
   static getHelperRangeSheetName(objectName){
-    return `__${objectName}_Helper_Range`;
+    let shortName = objectName;
+    try {
+      const config = this.getObjectConfig_(objectName);
+      if (config && config["Object Name"]) {
+        shortName = config["Object Name"];
+      }
+    } catch (e) {
+      // Fallback to the original objectName if configuration retrieval fails
+    }
+    return `__${shortName}_Helper_Range`;
   }
 
   /**
