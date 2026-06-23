@@ -195,7 +195,8 @@ class ValidationContext {
       this.populateHelperSheet(targetObjName, currentSpreadsheetId);
       
       const helperSheetName = this.getHelperRangeSheetName(targetObjName);
-      const helperSheet = spreadsheet.getSheetByName(helperSheetName);
+      const targetSpreadsheet = SpreadsheetApp.openById(currentSpreadsheetId);
+      const helperSheet = targetSpreadsheet.getSheetByName(helperSheetName);
       if (helperSheet) {
         return this.getDataSheetObjectValidationRange(targetObjName, helperSheetName, currentSpreadsheetId);
       } else {
@@ -374,8 +375,12 @@ class ValidationContext {
   static doesWorkbookNeedHelperSheet(objectName, spreadsheetIdToCheck){
     objectName ?? (() => { throw new Error("Object name not provided"); })();
     spreadsheetIdToCheck ?? (() => { throw new Error("Spreadsheet Id not provided"); })();
+    
     const objectSpreadsheetId = this.getObjectSpreadsheetId_(objectName);
-    return objectSpreadsheetId == spreadsheetIdToCheck ? false : true;
+    if (!objectSpreadsheetId) {
+      return false;
+    }
+    return objectSpreadsheetId !== spreadsheetIdToCheck;
   }
 
   /**
@@ -440,6 +445,9 @@ class ValidationContext {
     sheetName = sheetName ?? config["Datasheet"];
     const spreadsheet = SpreadsheetApp.openById(spreadsheetId);
     const sheet = spreadsheet.getSheetByName(sheetName);
+    if (!sheet) {
+      throw new Error(`Sheet '${sheetName}' not found in spreadsheet '${spreadsheetId}'`);
+    }
     const rangeAddress = this.getDataSheetObjectValidationRangeAddress(objectName, sheetName, spreadsheetId);
     const range = sheet.getRange(rangeAddress);
     LoggingManager.LogDebugMessage_(`Length of range found ${range.getNumRows()}`);
@@ -460,6 +468,13 @@ class ValidationContext {
     
     spreadsheetId = spreadsheetId ?? config["Spreadsheet Id"];
     sheetName = sheetName ?? config["Datasheet"];
+    
+    // Check if we are referencing a helper sheet
+    const isHelper = sheetName && sheetName.startsWith('__') && sheetName.endsWith('_Helper_Range');
+    if (isHelper) {
+      return "A2:A";
+    }
+    
     const headerNum = Number(config["Header Number"]) || 1;
     const shortName = config["Object Name"];
     

@@ -81,7 +81,7 @@
   <body>
     <div class="container">
       <div class="logo-wrapper">
-        <img id="logo-img" class="logo" src="<?= logoUrl ?>" alt="Logo">
+        <img id="logo-img" class="logo" src="<?= logoUrl ?>" alt="Logo" style="display: none;" onload="this.style.display='block';" onerror="this.style.display='none';">
       </div>
       <img class="spinner" src="https://ssl.gstatic.com/docs/common/viewer/loading.gif" alt="Loading">
       <div class="title">Biz Qops Initializing</div>
@@ -114,7 +114,12 @@
         img.style.opacity = '0';
         setTimeout(function() {
           img.onload = function() {
+            img.style.display = 'block';
             img.style.opacity = '1';
+            if (callback) callback();
+          };
+          img.onerror = function() {
+            img.style.display = 'none';
             if (callback) callback();
           };
           img.src = newUrl;

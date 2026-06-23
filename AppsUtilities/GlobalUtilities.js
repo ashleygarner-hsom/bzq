@@ -11,12 +11,20 @@ class GlobalUtilities{
    * @returns {int} The column number of the located field
    */
   static getColumnIndexOnSheet(spreadsheetId, sheetName, fieldNameToLocate, headerNum = 1) {
-    return SpreadsheetApp.openById(spreadsheetId)
-                         .getSheetByName(sheetName)
-                         .getRange(`${headerNum}:${headerNum}`)
-                         .createTextFinder(fieldNameToLocate)
-                         .findNext()
-                         .getColumn();
+    const ss = SpreadsheetApp.openById(spreadsheetId);
+    if (!ss) {
+      throw new Error(`Spreadsheet with ID '${spreadsheetId}' could not be opened.`);
+    }
+    const sheet = ss.getSheetByName(sheetName);
+    if (!sheet) {
+      throw new Error(`Sheet '${sheetName}' not found in spreadsheet '${spreadsheetId}'`);
+    }
+    const range = sheet.getRange(`${headerNum}:${headerNum}`);
+    const finder = range.createTextFinder(fieldNameToLocate).findNext();
+    if (!finder) {
+      throw new Error(`Field '${fieldNameToLocate}' not found in row ${headerNum} of sheet '${sheetName}'`);
+    }
+    return finder.getColumn();
   }
   /**
    * Gets the letter of the column index in the provided spreadsheet
@@ -26,12 +34,17 @@ class GlobalUtilities{
    * @returns {string} The letter of the column in a string
    */
   static getColumnLetter(spreadSheetId, sheetName, columnNumber) {
-    // Creates a range at row 1 and the target column, then gets its A1 notation and removes the row
-    return SpreadsheetApp.openById(spreadSheetId)
-                            .getSheetByName(sheetName)
-                            .getRange(1, columnNumber)
-                            .getA1Notation()
-                            .replace(/\d/g, "")
+    const ss = SpreadsheetApp.openById(spreadSheetId);
+    if (!ss) {
+      throw new Error(`Spreadsheet with ID '${spreadSheetId}' could not be opened.`);
+    }
+    const sheet = ss.getSheetByName(sheetName);
+    if (!sheet) {
+      throw new Error(`Sheet '${sheetName}' not found in spreadsheet '${spreadSheetId}'`);
+    }
+    return sheet.getRange(1, columnNumber)
+                .getA1Notation()
+                .replace(/\d/g, "");
   }
   /**
    * Dynamically maps a row array to a key-value object using the headers list.
@@ -116,18 +129,37 @@ class GlobalUtilities{
    * @private
    */
   static getDatasheetData_(objectName) {
-    let objConfig = ConfigurationManager.getObjectConfiguration(objectName, 'objectName');
-    if (!objConfig) {
-      objConfig = ConfigurationManager.getObjectConfiguration(objectName, 'object');
-    }
-    if (!objConfig) {
-      LoggingManager.LogError_(`Configuration not found for object '${objectName}'`);
-      return null;
+    let objConfig = null;
+    try {
+      objConfig = ConfigurationManager.getObjectConfiguration(objectName, 'objectName');
+      if (!objConfig) {
+        objConfig = ConfigurationManager.getObjectConfiguration(objectName, 'object');
+      }
+    } catch (e) {
+      // Ignore permissions/cache issues in custom functions
     }
     
-    const spreadsheetId = objConfig["Spreadsheet Id"];
-    const sheetName = objConfig["Datasheet"];
-    const headerNumber = Number(objConfig["Header Number"]) || 1;
+    let spreadsheetId = null;
+    let sheetName = null;
+    let headerNumber = 1;
+    
+    if (objConfig) {
+      spreadsheetId = objConfig["Spreadsheet Id"];
+      sheetName = objConfig["Datasheet"];
+      headerNumber = Number(objConfig["Header Number"]) || 1;
+    } else {
+      // Fallback: If configuration is missing or inaccessible (e.g., custom functions),
+      // look for standard sheet naming conventions in the active spreadsheet.
+      const activeSpreadsheet = SpreadsheetApp.getActiveSpreadsheet();
+      const candidateNames = [`__${objectName}s`, `${objectName}s`, objectName];
+      for (const name of candidateNames) {
+        if (activeSpreadsheet.getSheetByName(name)) {
+          spreadsheetId = activeSpreadsheet.getId();
+          sheetName = name;
+          break;
+        }
+      }
+    }
     
     if (!spreadsheetId || !sheetName) {
       LoggingManager.LogError_(`Invalid spreadsheet ID or sheet name in configuration for object '${objectName}'`);

@@ -38,10 +38,26 @@ log_banner() {
   echo -e "${PURPLE}====================================================${NC}"
 }
 
-# Check for required system dependencies
+# Check for required system dependencies and version compatibility
 check_dependencies() {
   if ! command -v node >/dev/null 2>&1; then
     log_error "Node.js is not installed. Node.js is required to run clasp CLI."
+  fi
+
+  # clasp has known fetch issues ('Premature close') on Node.js v22+
+  local current_version
+  current_version=$(node -v 2>/dev/null | tr -d 'v')
+  local major_version
+  major_version=$(echo "$current_version" | cut -d'.' -f1)
+
+  if [ -n "$major_version" ] && [ "$major_version" -ge 22 ]; then
+    local brew_node20_path="/opt/homebrew/opt/node@20/bin"
+    if [ -d "$brew_node20_path" ]; then
+      export PATH="$brew_node20_path:$PATH"
+    else
+      log_warn "Node.js version v$current_version detected (v22+). clasp may encounter connection issues ('Premature close')."
+      log_warn "If clasp fails, run: brew install node@20"
+    fi
   fi
 }
 

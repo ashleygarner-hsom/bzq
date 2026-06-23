@@ -108,7 +108,18 @@ function showLoadingDialog_() {
   try {
     const logoFileId = ConfigurationManager.getConfigValue("LOADING_LOGO", false);
     if (logoFileId) {
-      logoUrl = "https://docs.google.com/uc?export=download&id=" + logoFileId;
+      if (logoFileId.indexOf("http") === 0) {
+        logoUrl = logoFileId;
+      } else {
+        try {
+          const file = DriveApp.getFileById(logoFileId);
+          const mimeType = file.getMimeType();
+          const base64Data = Utilities.base64Encode(file.getBlob().getBytes());
+          logoUrl = "data:" + mimeType + ";base64," + base64Data;
+        } catch (driveErr) {
+          logoUrl = "https://docs.google.com/uc?export=download&id=" + logoFileId;
+        }
+      }
     }
   } catch (e) {
     // Ignore permissions issues
@@ -133,7 +144,18 @@ function appInit_getLogoUrl() {
   const logoFileId = ConfigurationManager.getConfigValue("LOADING_LOGO");
   let logoUrl = "https://ssl.gstatic.com/images/branding/product/2x/sheets_2020q4_48dp.png";
   if (logoFileId) {
-    logoUrl = "https://docs.google.com/uc?export=download&id=" + logoFileId;
+    if (logoFileId.indexOf("http") === 0) {
+      logoUrl = logoFileId;
+    } else {
+      try {
+        const file = DriveApp.getFileById(logoFileId);
+        const mimeType = file.getMimeType();
+        const base64Data = Utilities.base64Encode(file.getBlob().getBytes());
+        logoUrl = "data:" + mimeType + ";base64," + base64Data;
+      } catch (driveErr) {
+        logoUrl = "https://docs.google.com/uc?export=download&id=" + logoFileId;
+      }
+    }
   }
   return logoUrl;
 }
@@ -196,7 +218,9 @@ function buildManageBusinessMenu(ui, containerScope) {
     .addItem('Set record format', 'triggerSetRecordFormat');
     
   const utilitiesSubMenu = ui.createMenu('Utilities')
-    .addItem('Validate Selected', 'triggerValidateSelectedRows');
+    .addItem('Validate Selected', 'triggerValidateSelectedRows')
+    .addItem('Apply Header Format', 'triggerApplyHeaderFormat')
+    .addItem('Apply Record Format', 'triggerApplyRecordFormat');
 
   const adminSubMenu = ui.createMenu('Admin')
     .addItem('Initialize Application', 'appInit_setupInstallableTrigger')
@@ -316,5 +340,39 @@ function triggerValidateSelectedRows() {
     SpreadsheetApp.getUi().alert("Validation Complete", "Validation successfully rerun for the selected rows.", SpreadsheetApp.getUi().ButtonSet.OK);
   } catch (e) {
     SpreadsheetApp.getUi().alert("Validation Error", "Failed to rerun validation: " + e.message, SpreadsheetApp.getUi().ButtonSet.OK);
+  }
+}
+
+/**
+ * Menu trigger to apply the stored HEADER_FORMAT to the active range.
+ */
+function triggerApplyHeaderFormat() {
+  try {
+    const sheet = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
+    const activeRange = sheet.getActiveRange();
+    if (!activeRange) {
+      throw new Error("No active range selected.");
+    }
+    FormatManager.applyHeaderFormat(activeRange);
+    SpreadsheetApp.getActiveSpreadsheet().toast("Header format successfully applied to selected range.", "Formatting Success", 3);
+  } catch (e) {
+    SpreadsheetApp.getUi().alert("Formatting Error", "Failed to apply header format: " + e.message, SpreadsheetApp.getUi().ButtonSet.OK);
+  }
+}
+
+/**
+ * Menu trigger to apply the stored RECORD_FORMAT to the active range.
+ */
+function triggerApplyRecordFormat() {
+  try {
+    const sheet = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
+    const activeRange = sheet.getActiveRange();
+    if (!activeRange) {
+      throw new Error("No active range selected.");
+    }
+    FormatManager.applyRecordFormat(activeRange);
+    SpreadsheetApp.getActiveSpreadsheet().toast("Record format successfully applied to selected range.", "Formatting Success", 3);
+  } catch (e) {
+    SpreadsheetApp.getUi().alert("Formatting Error", "Failed to apply record format: " + e.message, SpreadsheetApp.getUi().ButtonSet.OK);
   }
 }
