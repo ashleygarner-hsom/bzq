@@ -1,8 +1,13 @@
 /**
- * Contains tools for retrieving, managing, and caching configuration keys and their values
+ * Contains tools for retrieving, managing, and caching configuration keys and their values.
  */
 class ConfigurationManager {
-  /**Reference to the configuration properties spreadsheet*/
+  /**
+   * Reference to the configuration properties spreadsheet.
+   * Opened using the workbook ID stored in AppUtilitiesGlobalProperties.
+   * @type {SpreadsheetApp.Spreadsheet}
+   * @private
+   */
   static get spreadsheet_() {
     const workbookId = AppUtilitiesGlobalProperties.configurationPropertiesWorkbookId_;
     try {
@@ -10,27 +15,41 @@ class ConfigurationManager {
     } catch (e) {
       throw new Error("Insufficient permissions to open configuration workbook. Please select 'ManageBusiness' -> 'Admin' -> 'Reset Configuration Cache' to warm up the configuration cache.");
     }
-  };
-  /**Referece to the google sheets app scripts script cache */
+  }
+
+  /**
+   * Reference to the Google Sheets script cache.
+   * @type {CacheService.Cache}
+   * @private
+   */
   static get cache_() {
     return CacheService.getScriptCache();
-  };
-  /**The prefix used by Configuration Manager to designate configuration cached keys and values */
+  }
+
+  /**
+   * The prefix used by Configuration Manager to designate configuration cached keys and values.
+   * @type {string}
+   * @private
+   */
   static get keyPrefix_() {
     return 'config_';
   }
+
   /**
-   * Adds keyPrefix_ to the key being retrieved from the cache
-   * @param {string} key The configuration key as it appears in the Configuration Properties sheet
-   * @return {string} The concatenated key for use retrieving from the Script Cache
+   * Adds keyPrefix_ to the key being retrieved from the cache.
+   * @param {string} key - The configuration key as it appears in the Configuration Properties sheet.
+   * @returns {string} The concatenated key for use retrieving from the Script Cache.
+   * @private
    */
   static getCacheKey_(key) {
     return this.keyPrefix_ + key;
   }
+
   /**
-   * Returns the key and values data from the configuration properties sheet
-   * @param {boolean} logExecution = true - Set to false to disable logging the current execution
-   * @return {Object[][]|null}. The two dimensional array containing the retrieved configuration properties
+   * Returns the key and values data from the configuration properties sheet.
+   * @param {boolean} [logExecution=true] - Set to false to disable logging the current execution.
+   * @returns {Array<Array<*>>|null} The two dimensional array containing the retrieved configuration properties, or null if sheet not found.
+   * @private
    */
   static getConfigurationPropertiesData_(logExecution = true) {
     const configPropertySheetName = AppUtilitiesGlobalProperties.configurationPropertiesSheetName_;
@@ -40,11 +59,12 @@ class ConfigurationManager {
     }
     return data;
   }
+
   /**
    * Efficiently retrieves a configuration value with caching.
-   * @param {string} key The configuration key to search for.
-   * @param {boolean} logExecution = true - Set to false to disable logging the current execution
-   * @return {string|null} The value from the cache or sheet, or null if not found.
+   * @param {string} key - The configuration key to search for.
+   * @param {boolean} [logExecution=true] - Set to false to disable logging the current execution.
+   * @returns {string|null} The value from the cache or sheet, or null if not found.
    */
   static getConfigValue(key, logExecution = true) {
     if (logExecution) {
@@ -59,7 +79,7 @@ class ConfigurationManager {
     if (!data) {
       return null;
     }
-    /**Start at row 1 to skip headers, scan each row's first value and return the second if the key matches */
+    // Start at row 1 to skip headers, scan each row's first value and return the second if the key matches
     for (let i = 1; i < data.length; i++) {
       if (data[i][0] === key) {
         const value = String(data[i][1]); // Cache only stores strings
@@ -75,13 +95,15 @@ class ConfigurationManager {
     this.cache_.put(cacheKey, '___NULL___', 1500);
     return null;
   }
+
   /**
-   * Retrieves all configuration keys and values, logs the current cached value, removes it, and adds the current value and logs the new value
-   * Use to update the configuration cache to hold the current values in the sheet
-   * @param {boolean} logExecution = true - Set to false to disable logging the current execution
+   * Retrieves all configuration keys and values, logs the current cached value, removes it, and adds the current value and logs the new value.
+   * Use to update the configuration cache to hold the current values in the sheet.
+   * @param {boolean} [logExecution=true] - Set to false to disable logging the current execution.
+   * @returns {void}
    */
   static updateCachedConfigValues(logExecution = true) {
-    const data = this.getConfigurationPropertiesData_(logExecution)
+    const data = this.getConfigurationPropertiesData_(logExecution);
     if (!data) {
       return;
     }
@@ -99,10 +121,12 @@ class ConfigurationManager {
       }
     });
   }
+
   /**
    * Sanitizes configuration keys for CacheService (alphanumeric, underscores, and dashes only, under 250 characters).
-   * @param {string} key - Raw key string
-   * @returns {string} Sanitized key
+   * @param {string} key - Raw key string.
+   * @returns {string} Sanitized key.
+   * @private
    */
   static sanitizeCacheKey_(key) {
     if (typeof key !== 'string') {
@@ -110,10 +134,12 @@ class ConfigurationManager {
     }
     return key.replace(/[^a-zA-Z0-9_-]/g, '_').toLowerCase().substring(0, 240);
   }
+
   /**
-   * Retrieves data from a specific sheet in the configuration workbook
-   * @param {string} sheetName - Name of the sheet to load
-   * @return {any[][]|null} Spreadsheet values, or null if sheet not found
+   * Retrieves data from a specific sheet in the configuration workbook.
+   * @param {string} sheetName - Name of the sheet to load.
+   * @returns {Array<Array<*>>|null} Spreadsheet values, or null if sheet not found.
+   * @private
    */
   static getSheetData_(sheetName) {
     const sheet = this.spreadsheet_.getSheetByName(sheetName);
@@ -123,11 +149,13 @@ class ConfigurationManager {
     }
     return sheet.getDataRange().getValues();
   }
+
   /**
    * Helper: Retrieves a cached value, optionally parsing it as JSON, and handling the negative cache sentinel '___NULL___'.
-   * @param {string} cacheKey - The cache key to query
-   * @param {boolean} parseJson - Whether to parse the cached value as JSON (defaults to true)
-   * @returns {any|null|undefined} Retrieved value, null if cached as missing, or undefined if not in cache
+   * @param {string} cacheKey - The cache key to query.
+   * @param {boolean} [parseJson=true] - Whether to parse the cached value as JSON.
+   * @returns {any|null|undefined} Retrieved value, null if cached as missing, or undefined if not in cache.
+   * @private
    */
   static getCachedValue_(cacheKey, parseJson = true) {
     const cachedValue = this.cache_.get(cacheKey);
@@ -139,11 +167,13 @@ class ConfigurationManager {
     }
     return undefined;
   }
+
   /**
    * Helper: Retrieves data from a sheet and caches an empty indicator if missing/empty.
-   * @param {string} sheetName - Name of the sheet to load
-   * @param {string} cacheKey - The cache key to update on failure
-   * @returns {any[][]|null} Spreadsheet values, or null if sheet not found/empty
+   * @param {string} sheetName - Name of the sheet to load.
+   * @param {string} cacheKey - The cache key to update on failure.
+   * @returns {Array<Array<*>>|null} Spreadsheet values, or null if sheet not found/empty.
+   * @private
    */
   static getSheetDataAndValidate_(sheetName, cacheKey) {
     const data = this.getSheetData_(sheetName);
@@ -153,12 +183,13 @@ class ConfigurationManager {
     }
     return data;
   }
+
   /**
    * Retrieves an object configuration record from __ObjectConfiguration.
    * Caches the returned record as a JSON string under both its Object Name and Datasheet Name.
-   * @param {string} queryValue - Object Name or Datasheet Name
-   * @param {string} queryBy - 'objectName' or 'datasheetName'
-   * @return {Object|null} The configuration record object, or null if not found
+   * @param {string} queryValue - Object Name or Datasheet Name.
+   * @param {string} [queryBy='objectName'] - 'objectName', 'object', or 'datasheetName'.
+   * @returns {Object|null} The configuration record object, or null if not found.
    */
   static getObjectConfiguration(queryValue, queryBy = 'objectName') {
     if (!queryValue) return null;
@@ -228,11 +259,12 @@ class ConfigurationManager {
     this.cache_.put(cacheKey, '___NULL___', 1500);
     return null;
   }
+
   /**
    * Retrieves an array of lookup configuration objects from __LookupConfiguration matching a Source Object.
    * Caches the returned array as a JSON string.
-   * @param {string} sourceObject - Source object name to query
-   * @return {Object[]|null} Array of lookup configuration objects, or null if not found
+   * @param {string} sourceObject - Source object name to query.
+   * @returns {Object[]|null} Array of lookup configuration objects, or null if not found.
    */
   static getLookupConfiguration(sourceObject) {
     if (!sourceObject) return null;
@@ -267,12 +299,13 @@ class ConfigurationManager {
     this.cache_.put(cacheKey, '___NULL___', 1500);
     return null;
   }
+
   /**
    * Retrieves a single configuration record from __DropdownConfiguration matching a Dropdown Name and Object Name.
    * Caches the returned record as a JSON string.
-   * @param {string} dropdownName - Dropdown Name to query
-   * @param {string} objectName - Associated Object Name to query
-   * @return {Object|null} Dropdown configuration object, or null if not found
+   * @param {string} dropdownName - Dropdown Name to query.
+   * @param {string} objectName - Associated Object Name to query.
+   * @returns {Object|null} Dropdown configuration object, or null if not found.
    */
   static getDropdownConfiguration(dropdownName, objectName) {
     if (!dropdownName || !objectName) return null;
@@ -308,11 +341,12 @@ class ConfigurationManager {
     this.cache_.put(cacheKey, '___NULL___', 1500);
     return null;
   }
+
   /**
    * Retrieves an array of dropdown configuration objects from __DropdownConfiguration matching an Object.
    * Caches the returned array as a JSON string.
-   * @param {string} objectName - Object name (full object string) to query
-   * @return {Object[]|null} Array of dropdown configuration objects, or null if not found
+   * @param {string} objectName - Object name (full object string) to query.
+   * @returns {Object[]|null} Array of dropdown configuration objects, or null if not found.
    */
   static getDropdownConfigurations(objectName) {
     if (!objectName) return null;
@@ -348,11 +382,12 @@ class ConfigurationManager {
     this.cache_.put(cacheKey, '___NULL___', 1500);
     return null;
   }
+
   /**
    * Retrieves a single configuration record from __GlobalDropdownConfiguration matching a Global Dropdown Name.
    * Caches the returned record as a JSON string.
-   * @param {string} globalDropdownName - Global Dropdown Name to query
-   * @return {Object|null} Global Dropdown configuration object, or null if not found
+   * @param {string} globalDropdownName - Global Dropdown Name to query.
+   * @returns {Object|null} Global Dropdown configuration object, or null if not found.
    */
   static getGlobalDropdownConfiguration(globalDropdownName) {
     if (!globalDropdownName) return null;
@@ -386,8 +421,9 @@ class ConfigurationManager {
   
   /**
    * Updates or inserts a configuration property value in the Configuration Properties sheet, and updates cache.
-   * @param {string} key - The configuration key
-   * @param {string} value - The configuration value
+   * @param {string} key - The configuration key.
+   * @param {string} value - The configuration value.
+   * @returns {void}
    */
   static setConfigValue(key, value) {
     const configPropertySheetName = AppUtilitiesGlobalProperties.configurationPropertiesSheetName_;
@@ -418,6 +454,7 @@ class ConfigurationManager {
 
   /**
    * Updates cached object configurations from the __ObjectConfiguration sheet.
+   * @returns {void}
    */
   static updateCachedObjectConfigurations() {
     const sheetName = AppUtilitiesGlobalProperties.objectConfigurationSheetName_;
@@ -451,6 +488,7 @@ class ConfigurationManager {
 
   /**
    * Updates cached lookup configurations from the __LookupConfiguration sheet.
+   * @returns {void}
    */
   static updateCachedLookupConfigurations() {
     const sheetName = AppUtilitiesGlobalProperties.lookupConfigurationSheetName_;
@@ -482,6 +520,7 @@ class ConfigurationManager {
 
   /**
    * Updates cached dropdown configurations from the __DropdownConfiguration sheet.
+   * @returns {void}
    */
   static updateCachedDropdownConfigurations() {
     const sheetName = AppUtilitiesGlobalProperties.dropdownConfigurationSheetName_;
@@ -522,6 +561,7 @@ class ConfigurationManager {
 
   /**
    * Updates cached global dropdown configurations from the __GlobalDropdownConfiguration sheet.
+   * @returns {void}
    */
   static updateCachedGlobalDropdownConfigurations() {
     const sheetName = AppUtilitiesGlobalProperties.globalDropdownConfigurationSheetName_;
@@ -545,6 +585,7 @@ class ConfigurationManager {
 
   /**
    * Cycles through all configuration worksheets and resets/updates all cached configurations.
+   * @returns {void}
    */
   static resetAllCacheValues() {
     // 1. Reset configuration properties
@@ -566,78 +607,88 @@ class ConfigurationManager {
 
 /**
  * Global API wrapper: Resets/updates all cached configurations.
+ * @returns {void}
  */
 function configurationManager_ResetAllCacheValues() {
   ConfigurationManager.resetAllCacheValues();
 }
 
 /**
- * Global API wrapper: Sets a configuration property value
- * @param {string} key - The configuration key
- * @param {string} value - The configuration value
+ * Global API wrapper: Sets a configuration property value.
+ * @param {string} key - The configuration key.
+ * @param {string} value - The configuration value.
+ * @returns {void}
  */
 function configurationManager_SetConfigValue(key, value) {
   ConfigurationManager.setConfigValue(key, value);
 }
+
 /**
- * Retrieves all configuration keys and values, logs the current cached value, removes it, and adds the current value and logs the new value
- * Use to update the configuration cache to hold the current values in the sheet
- * @param {boolean} logExecution = true - Set to false to disable logging the current execution, primarily used by the SequenceManager
+ * Retrieves all configuration keys and values, logs the current cached value, removes it, and adds the current value and logs the new value.
+ * Use to update the configuration cache to hold the current values in the sheet.
+ * @param {boolean} [logExecution=true] - Set to false to disable logging the current execution.
+ * @returns {void}
  */
 function configurationManager_UpdateCachedConfigValues(logExecution = true) {
-  return ConfigurationManager.updateCachedConfigValues(logExecution);
+  ConfigurationManager.updateCachedConfigValues(logExecution);
 }
+
 /**
  * Efficiently retrieves a configuration value with caching.
- * @param {string} key The configuration key to search for.
- * @param {boolean} logExecution = true - Set to false to disable logging the current execution
- * @return {string|null} The value from the cache or sheet, or null if not found.
+ * @param {string} key - The configuration key to search for.
+ * @param {boolean} [logExecution=true] - Set to false to disable logging the current execution.
+ * @returns {string|null} The value from the cache or sheet, or null if not found.
  */
 function configurationManager_GetConfigValue(key, logExecution = true) {
   return ConfigurationManager.getConfigValue(key, logExecution);
 }
+
 /**
- * Global API wrapper: Retrieves object configuration as a JSON string
- * @param {string} queryValue - Object Name or Datasheet Name
- * @param {string} queryBy - 'objectName' or 'datasheetName'
- * @return {string|null} The JSON string of the object configuration, or null if not found
+ * Global API wrapper: Retrieves object configuration as a JSON string.
+ * @param {string} queryValue - Object Name or Datasheet Name.
+ * @param {string} [queryBy='objectName'] - 'objectName', 'object', or 'datasheetName'.
+ * @returns {string|null} The JSON string of the object configuration, or null if not found.
  */
 function configurationManager_GetObjectConfiguration(queryValue, queryBy = 'objectName') {
   const result = ConfigurationManager.getObjectConfiguration(queryValue, queryBy);
   return result ? JSON.stringify(result) : null;
 }
+
 /**
- * Global API wrapper: Retrieves lookup configurations for a source object as a JSON string
- * @param {string} sourceObject - Source object name
- * @return {string|null} The JSON string of the array of lookup configurations, or null if not found
+ * Global API wrapper: Retrieves lookup configurations for a source object as a JSON string.
+ * @param {string} sourceObject - Source object name.
+ * @returns {string|null} The JSON string of the array of lookup configurations, or null if not found.
  */
 function configurationManager_GetLookupConfiguration(sourceObject) {
   const result = ConfigurationManager.getLookupConfiguration(sourceObject);
   return result ? JSON.stringify(result) : null;
 }
+
 /**
- * Global API wrapper: Retrieves dropdown configuration as a JSON string
- * @param {string} dropdownName - Dropdown Name
- * @param {string} objectName - Object Name
- * @return {string|null} The JSON string of the dropdown configuration, or null if not found
+ * Global API wrapper: Retrieves dropdown configuration as a JSON string.
+ * @param {string} dropdownName - Dropdown Name.
+ * @param {string} objectName - Object Name.
+ * @returns {string|null} The JSON string of the dropdown configuration, or null if not found.
  */
 function configurationManager_GetDropdownConfiguration(dropdownName, objectName) {
   const result = ConfigurationManager.getDropdownConfiguration(dropdownName, objectName);
   return result ? JSON.stringify(result) : null;
 }
+
 /**
- * Global API wrapper: Retrieves dropdown configurations for an object as a JSON string
- * @param {string} objectName - Object Name
- * @return {string|null} The JSON string of the array of dropdown configurations, or null if not found
+ * Global API wrapper: Retrieves dropdown configurations for an object as a JSON string.
+ * @param {string} objectName - Object Name.
+ * @returns {string|null} The JSON string of the array of dropdown configurations, or null if not found.
  */
 function configurationManager_GetDropdownConfigurations(objectName) {
   const result = ConfigurationManager.getDropdownConfigurations(objectName);
   return result ? JSON.stringify(result) : null;
 }
+
 /**
- * Global API wrapper: Retrieves global dropdown configuration as a JSON string
- * @param {string} globalDropdownName - Global Dropdown Name
- * @return {string|null} The JSON string of the global dropdown configuration, or null if not found
+ * Global API wrapper: Retrieves global dropdown configuration as a JSON string.
+ * @param {string} globalDropdownName - Global Dropdown Name.
+ * @returns {string|null} The JSON string of the global dropdown configuration, or null if not found.
  */
 function configurationManager_GetGlobalDropdownConfiguration(globalDropdownName) {
   const result = ConfigurationManager.getGlobalDropdownConfiguration(globalDropdownName);

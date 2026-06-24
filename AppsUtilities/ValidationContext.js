@@ -1,9 +1,11 @@
 /**
- * Contains tools for processing sheet data validation and dynamically updating rules when a new record is created
+ * Contains tools for processing sheet data validation and dynamically updating rules when a new record is created.
  */
 class ValidationContext {
   /**
    * Helper to retrieve object configuration supporting both short and full object names.
+   * @param {string} objectName - Name of the object type.
+   * @returns {Object|null} Configuration record object, or null if not found.
    * @private
    */
   static getObjectConfig_(objectName) {
@@ -15,7 +17,11 @@ class ValidationContext {
   }
 
   /**
-   * Runs during the onEdit event
+   * Runs during the onEdit event to delegate validation processing.
+   * @param {SpreadsheetApp.Spreadsheet} spreadsheet - The active spreadsheet.
+   * @param {string} sheetName - Name of the edited sheet.
+   * @param {GoogleAppsScript.Events.SheetsOnEdit} e - The edit event object.
+   * @returns {void}
    * @deprecated Deprecated on 2026-06-24. Will be obsolete and safe to remove on or after 2026-12-24.
    * Use ValidationContext.processRecordEdit directly.
    */
@@ -29,9 +35,12 @@ class ValidationContext {
 
   /**
    * Reruns validation for a selected range in a sheet.
-   * @param {SpreadsheetApp.Spreadsheet} spreadsheet - The active spreadsheet
-   * @param {SpreadsheetApp.Sheet} sheet - The active sheet
-   * @param {SpreadsheetApp.Range} range - The selected range to validate
+   * Raises descriptive error if the sheet is not configured for validation.
+   * @param {SpreadsheetApp.Spreadsheet} spreadsheet - The active spreadsheet.
+   * @param {SpreadsheetApp.Sheet} sheet - The active sheet.
+   * @param {SpreadsheetApp.Range} range - The selected range to validate.
+   * @returns {void}
+   * @throws {Error} If sheet validation is not configured or disabled.
    */
   static validateSelectedRange(spreadsheet, sheet, range) {
     const sheetName = sheet.getName();
@@ -47,7 +56,13 @@ class ValidationContext {
   /**
    * Processes validation and dynamic rules configuration for edited row(s) in a sheet.
    * Clears validations for any row where required fields are not fully filled.
-   * @param {Object} params - Positional object { spreadsheet, sheetName, range, objConfig, forceValidation }
+   * @param {Object} params - The parameter options object.
+   * @param {SpreadsheetApp.Spreadsheet} params.spreadsheet - The active spreadsheet.
+   * @param {string} params.sheetName - Name of the sheet containing the edit.
+   * @param {SpreadsheetApp.Range} params.range - The range containing edited cell(s).
+   * @param {Object} params.objConfig - The object configuration metadata record.
+   * @param {boolean} [params.forceValidation=false] - If true, bypasses row emptiness checks.
+   * @returns {void}
    */
   static processRecordEdit(params) {
     const { spreadsheet, sheetName, range, objConfig, forceValidation = false } = params;
@@ -73,6 +88,11 @@ class ValidationContext {
 
   /**
    * Extracts sheet metadata for processing validations.
+   * Parses headers, lookup configs, dropdown configs, and primary fields.
+   * @param {Object} params - The parameter options object.
+   * @param {Object} params.objConfig - The object configuration metadata record.
+   * @param {SpreadsheetApp.Sheet} params.sheet - The sheet currently being validated.
+   * @returns {{ headerNumber: number, lastCol: number, lookups: Object[], dropdowns: Object[], primaryFields: string[], headers: string[], headerIndices: Object<string, number> }} Parsed sheet validation metadata.
    * @private
    */
   static getValidationMetadata_(params) {
@@ -96,6 +116,15 @@ class ValidationContext {
 
   /**
    * Routes row-level validation checks.
+   * Checks for empty rows and applies appropriate lookup and dropdown validations.
+   * @param {Object} params - The parameter options object.
+   * @param {SpreadsheetApp.Sheet} params.sheet - The active sheet.
+   * @param {number} params.row - The 1-based row index to validate.
+   * @param {Object} params.meta - Pre-computed validation metadata object.
+   * @param {string} params.currentSpreadsheetId - The ID of the active spreadsheet.
+   * @param {SpreadsheetApp.Spreadsheet} params.spreadsheet - The active spreadsheet object.
+   * @param {boolean} params.forceValidation - If true, ignores row emptiness checks.
+   * @returns {void}
    * @private
    */
   static processRowValidation_(params) {
@@ -120,6 +149,14 @@ class ValidationContext {
 
   /**
    * Helper to run lookup validations on a row.
+   * @param {Object} params - The parameter options object.
+   * @param {SpreadsheetApp.Sheet} params.sheet - The active sheet.
+   * @param {number} params.row - The 1-based row index.
+   * @param {Object} params.meta - Pre-computed validation metadata object.
+   * @param {string} params.currentSpreadsheetId - The ID of the active spreadsheet.
+   * @param {SpreadsheetApp.Spreadsheet} params.spreadsheet - The active spreadsheet object.
+   * @param {Set<number>} params.processedCols - Set of column indices that have been processed.
+   * @returns {void}
    * @private
    */
   static runLookupValidations_(params) {
@@ -137,6 +174,12 @@ class ValidationContext {
 
   /**
    * Helper to run static dropdown validations on a row.
+   * @param {Object} params - The parameter options object.
+   * @param {SpreadsheetApp.Sheet} params.sheet - The active sheet.
+   * @param {number} params.row - The 1-based row index.
+   * @param {Object} params.meta - Pre-computed validation metadata object.
+   * @param {Set<number>} params.processedCols - Set of column indices that have been processed.
+   * @returns {void}
    * @private
    */
   static runDropdownValidations_(params) {
@@ -154,6 +197,10 @@ class ValidationContext {
 
   /**
    * Helper to check if all cell values in a given row are empty.
+   * @param {SpreadsheetApp.Sheet} sheet - The target sheet.
+   * @param {number} row - The 1-based row index to check.
+   * @param {number} lastCol - The last column index in the sheet.
+   * @returns {boolean} True if all cell values are empty, false otherwise.
    * @private
    */
   static checkAllRowValuesEmpty_(sheet, row, lastCol) {
@@ -169,6 +216,9 @@ class ValidationContext {
 
   /**
    * Resolves the column name for a lookup configuration.
+   * Uses config lookup properties or targets the configured primary key field.
+   * @param {Object} lookup - The lookup configuration record.
+   * @returns {string|null} Resolved target column name, or null if unresolved.
    * @private
    */
   static getTargetColumnName_(lookup) {
@@ -182,6 +232,10 @@ class ValidationContext {
 
   /**
    * Helper to retrieve a cross-workbook lookup via helper sheet.
+   * Automatically initializes and populates helper sheet if missing.
+   * @param {string} targetObjName - Name of the target lookup object.
+   * @param {string} currentSpreadsheetId - The ID of the current spreadsheet.
+   * @returns {SpreadsheetApp.Range} The range containing valid lookup keys on the helper sheet.
    * @private
    */
   static getHelperValidationRange_(targetObjName, currentSpreadsheetId) {
@@ -201,6 +255,10 @@ class ValidationContext {
 
   /**
    * Retrieves the validation range for a given target object, creating and populating helper sheets if needed.
+   * @param {string} targetObjName - Name of the target lookup object.
+   * @param {string} currentSpreadsheetId - The ID of the current spreadsheet.
+   * @param {SpreadsheetApp.Spreadsheet} spreadsheet - The active spreadsheet object.
+   * @returns {SpreadsheetApp.Range|null} The validation range containing valid keys, or null if resolution fails.
    * @private
    */
   static retrieveValidationRange_(targetObjName, currentSpreadsheetId, spreadsheet) {
@@ -220,6 +278,14 @@ class ValidationContext {
 
   /**
    * Applies validation rule for a configured lookup to a cell in a row.
+   * @param {Object} params - The parameter options object.
+   * @param {SpreadsheetApp.Sheet} params.sheet - The active sheet.
+   * @param {number} params.row - The 1-based row index.
+   * @param {Object} params.lookup - The lookup configuration metadata record.
+   * @param {Object<string, number>} params.headerIndices - Mapped column names to 1-based indices.
+   * @param {string} params.currentSpreadsheetId - The current spreadsheet ID.
+   * @param {SpreadsheetApp.Spreadsheet} params.spreadsheet - The active spreadsheet object.
+   * @returns {void}
    * @private
    */
   static applyLookupValidation_(params) {
@@ -246,6 +312,12 @@ class ValidationContext {
 
   /**
    * Applies validation rule for a configured static dropdown to a cell in a row.
+   * @param {Object} params - The parameter options object.
+   * @param {SpreadsheetApp.Sheet} params.sheet - The active sheet.
+   * @param {number} params.row - The 1-based row index.
+   * @param {Object} params.dropdown - The dropdown configuration metadata record.
+   * @param {Object<string, number>} params.headerIndices - Mapped column names to 1-based indices.
+   * @returns {void}
    * @private
    */
   static applyDropdownValidation_(params) {
@@ -268,6 +340,12 @@ class ValidationContext {
 
   /**
    * Applies validation rule for a global dropdown if matches column name.
+   * @param {Object} params - The parameter options object.
+   * @param {SpreadsheetApp.Sheet} params.sheet - The active sheet.
+   * @param {number} params.row - The 1-based row index.
+   * @param {string} params.colName - Column header name to check against global dropdown configurations.
+   * @param {number} params.colIndex - The 1-based column index of the cell.
+   * @returns {void}
    * @private
    */
   static applyGlobalDropdownValidation_(params) {
@@ -288,7 +366,10 @@ class ValidationContext {
   }
 
   /**
-   * Returns a validation rule to apply to range based on the provided column name
+   * Returns a validation rule to apply to range based on the provided column name.
+   * @param {string} objectName - Name of the object type.
+   * @param {string} dropdownColumnName - Column header name.
+   * @returns {SpreadsheetApp.DataValidation} Compiled data validation rule.
    * @deprecated Deprecated on 2026-06-24. Will be obsolete and safe to remove on or after 2026-12-24.
    */
   static createDropdownValidationRule(objectName, dropdownColumnName){
@@ -300,7 +381,12 @@ class ValidationContext {
   }
 
   /**
-   * If a helper sheet for the provided object exists in the target it is populated with the imported range
+   * If a helper sheet for the provided object exists in the target workbook, it is populated with the imported range.
+   * Uses the importrange formula.
+   * @param {string} objectName - Target object type name.
+   * @param {string} targetSpreadsheet - Target spreadsheet ID.
+   * @returns {void}
+   * @throws {Error} If objectName or targetSpreadsheet is missing, or helper sheet does not exist.
    */
   static populateHelperSheet(objectName, targetSpreadsheet){
     objectName ?? (() => { throw new Error("Object name not provided"); })();
@@ -312,7 +398,10 @@ class ValidationContext {
   }
 
   /**
-   * Creates the lookup formula to use in the first cell of the lookup sheet
+   * Creates the lookup formula to use in the first cell of the lookup sheet.
+   * Uses importrange pointing to the source object's datasheet.
+   * @param {string} objectName - Name of the object type to link.
+   * @returns {string} The importrange formula string.
    */
   static getHelperRangeFormula(objectName){
     const spreadsheetId = this.getObjectSpreadsheetId_(objectName);
@@ -322,7 +411,11 @@ class ValidationContext {
   }
 
   /**
-   * Creates a hidden sheet using the hidden sheet naming convention
+   * Creates a hidden sheet using the hidden sheet naming convention.
+   * @param {string} objectName - Name of the object type.
+   * @param {string} spreadsheetIdToCreateHelperSheetIn - Target workbook spreadsheet ID.
+   * @returns {boolean} True if sheet is successfully created or already exists.
+   * @throws {Error} If parameters are missing or sheet creation failed.
    */
   static createHelperSheet(objectName, spreadsheetIdToCreateHelperSheetIn){
     objectName ?? (() => { throw new Error("Object name not provided"); })();
@@ -338,7 +431,11 @@ class ValidationContext {
   }
 
   /**
-   * Checks if the object of a lookup needs a helper sheet in the provided workbook
+   * Checks if the object of a lookup needs a helper sheet in the provided workbook.
+   * Returns true if the object lives in a different spreadsheet workbook.
+   * @param {string} objectName - Name of the target object type.
+   * @param {string} spreadsheetIdToCheck - Spreadsheet ID to check.
+   * @returns {boolean} True if helper sheet is needed (i.e. cross-workbook), false otherwise.
    */
   static doesWorkbookNeedHelperSheet(objectName, spreadsheetIdToCheck){
     objectName ?? (() => { throw new Error("Object name not provided"); })();
@@ -349,7 +446,10 @@ class ValidationContext {
   }
 
   /**
-   * Checks if the provided spreadsheet id has a helper range sheet for the provided object
+   * Checks if the provided spreadsheet id has a helper range sheet for the provided object.
+   * @param {string} objectName - Name of the target object type.
+   * @param {string} spreadsheetIdToCheck - Spreadsheet ID to search.
+   * @returns {boolean} True if the helper sheet exists, false otherwise.
    */
   static doesHelperSheetExist(objectName, spreadsheetIdToCheck){
     objectName ?? (() => { throw new Error("Object name not provided"); })();
@@ -360,7 +460,9 @@ class ValidationContext {
   }
 
   /**
-   * Generates the Helper Range Sheet name for use in validation
+   * Generates the Helper Range Sheet name for use in validation.
+   * @param {string} objectName - Name of the object type.
+   * @returns {string} Name of the hidden helper sheet.
    */
   static getHelperRangeSheetName(objectName){
     let shortName = objectName;
@@ -374,7 +476,10 @@ class ValidationContext {
   }
 
   /**
-   * Retrieves the current lookup values for an object as an array
+   * Retrieves the current lookup values for an object as a flat array.
+   * Skips header row and empty cells.
+   * @param {string} objectName - Name of the object type.
+   * @returns {string[]} Flat array of current active lookup key values.
    */
   static getDataSheetObjectValidationValues(objectName){
     objectName ?? (() => { throw new Error("Object name not provided"); })();
@@ -383,7 +488,12 @@ class ValidationContext {
   }
 
   /**
-   * Retrieves a 1 column range containing all cells with the requested object's lookup values
+   * Retrieves a 1-column range containing all cells with the requested object's lookup values.
+   * @param {string} objectName - Name of the object type.
+   * @param {string|null} [sheetName=null] - Optional datasheet name fallback.
+   * @param {string|null} [spreadsheetId=null] - Optional spreadsheet ID fallback.
+   * @returns {SpreadsheetApp.Range} The range containing validation options.
+   * @throws {Error} If configuration or spreadsheet/sheet is missing.
    */
   static getDataSheetObjectValidationRange(objectName, sheetName = null, spreadsheetId = null) {
     objectName ?? (() => { throw new Error("Object name not provided"); })();
@@ -400,7 +510,12 @@ class ValidationContext {
   }
 
   /**
-   * Retrieves the A1 notation address of the range containing the header and values for lookups of the provided object
+   * Retrieves the A1 notation address of the range containing the header and values for lookups of the provided object.
+   * @param {string} objectName - Name of the object type.
+   * @param {string|null} [sheetName=null] - Optional datasheet name fallback.
+   * @param {string|null} [spreadsheetId=null] - Optional spreadsheet ID fallback.
+   * @returns {string} Range address in A1 notation (e.g. "A2:A", "A1:A").
+   * @throws {Error} If configuration is not found.
    */
   static getDataSheetObjectValidationRangeAddress(objectName, sheetName = null, spreadsheetId = null){
     objectName ?? (() => { throw new Error("Object name not provided"); })();
@@ -421,7 +536,9 @@ class ValidationContext {
   }
 
   /**
-   * Retrieves the singular object name of the provided data sheet
+   * Retrieves the singular object name of the provided datasheet.
+   * @param {string} sheetName - Name of the datasheet/sheet name.
+   * @returns {string|null} Singular object name (e.g. "Prospect"), or null if not found.
    * @private
    */
   static getObjectNameFromSheet_(sheetName){
@@ -430,7 +547,9 @@ class ValidationContext {
   }
 
   /**
-   * Retrieves the id of the spreadsheet containing the object's data sheet
+   * Retrieves the ID of the spreadsheet containing the object's datasheet.
+   * @param {string} objectName - Name of the object type.
+   * @returns {string|null} Spreadsheet ID string, or null if config not found.
    * @private
    */
   static getObjectSpreadsheetId_(objectName){
@@ -439,7 +558,9 @@ class ValidationContext {
   }
 
   /**
-   * Retrieves the data sheet name of the provided object, which is also the plural of the object
+   * Retrieves the datasheet name of the provided object, which is also the plural of the object.
+   * @param {string} objectName - Name of the object type.
+   * @returns {string|null} Datasheet sheet name, or null if config not found.
    * @private
    */
   static getObjectSheetName_(objectName){
@@ -448,7 +569,9 @@ class ValidationContext {
   }
 
   /**
-   * Retrieves the assigned header row for an objects data sheet
+   * Retrieves the assigned header row index for an object's datasheet.
+   * @param {string} objectName - Name of the object type.
+   * @returns {number} 1-based header row index, defaults to 1.
    * @private
    */
   static getObjectSheetHeaderIndex_(objectName){
@@ -457,7 +580,9 @@ class ValidationContext {
   }
 
   /**
-   * Retrieves the primary data fields that should be filled in on a record as an array
+   * Retrieves the primary data fields that should be filled in on a record as an array.
+   * @param {string} objectName - Name of the object type.
+   * @returns {string[]} Array of primary field names.
    * @private
    */
   static getObjectPrimaryFields_(objectName){
@@ -466,7 +591,9 @@ class ValidationContext {
   }
 
   /**
-   * Retrieves the configured static dropdowns of an object
+   * Retrieves the configured static dropdowns of an object.
+   * @param {string} objectName - Name of the object type.
+   * @returns {string[]} Array of dropdown column/field names.
    * @private
    */
   static getObjectDropdownColumns_(objectName){
@@ -478,7 +605,9 @@ class ValidationContext {
   }
 
   /**
-   * Retrieves the configured lookup dropdowns of an object
+   * Retrieves the configured lookup dropdowns of an object.
+   * @param {string} objectName - Name of the object type.
+   * @returns {string[]} Array of target column names for lookup validations.
    * @private
    */
   static getObjectLookupColumns_(objectName){
@@ -497,7 +626,11 @@ class ValidationContext {
   }
 
   /**
-   * Retrieves the configured static dropdown values of an object
+   * Retrieves the configured static dropdown values of an object.
+   * Parses the comma-separated values configuration.
+   * @param {string} objectName - Name of the object type.
+   * @param {string} columnName - Name of the static dropdown column.
+   * @returns {string[]} Array of dropdown values.
    */
   static getObjectDropdownColumnValues(objectName, columnName){
     let config = ConfigurationManager.getDropdownConfiguration(columnName, objectName);
@@ -511,7 +644,9 @@ class ValidationContext {
   }
 
   /**
-   * Global dropdowns don't refer to a specific object name in their configuration so they are retrieved differently
+   * Global dropdowns don't refer to a specific object name in their configuration so they are retrieved differently.
+   * @param {string} globalDropdownName - Name of the global dropdown configuration.
+   * @returns {string[]} Array of global dropdown values.
    */
   static getGlobalDropdownValues(globalDropdownName){
     const config = ConfigurationManager.getGlobalDropdownConfiguration(globalDropdownName);
@@ -520,7 +655,7 @@ class ValidationContext {
 }
 
 /**
- * General testing method, not meant to be called during production
+ * General testing method, not meant to be called during production.
  * @deprecated Deprecated on 2026-06-24. Will be obsolete and safe to remove on or after 2026-12-24.
  */
 function adHocTest(){
@@ -528,28 +663,28 @@ function adHocTest(){
 }
 
 /**
- * Retrieves the current lookup values for an object as an array
- * @param {string} referencedObjectName - Name of the lookup object to find values of
- * @returns {string[]} Array of strings that are the current lookup values for the provided object
+ * Retrieves the current lookup values for an object as an array.
+ * @param {string} referencedObjectName - Name of the lookup object to find values of.
+ * @returns {string[]} Array of strings that are the current lookup values for the provided object.
  */
 function validationContext_getLookupRangeValuesForForm(referencedObjectName){
   return ValidationContext.getDataSheetObjectValidationValues(referencedObjectName);
 }
 
 /**
- * Global dropdowns don't refer to a specific object name in their configuration so they are retrieved differently
- * @param {string} globalDropdownName
- * @returns {string[]} Array of strings representing the choosable values
+ * Global dropdowns don't refer to a specific object name in their configuration so they are retrieved differently.
+ * @param {string} globalDropdownName - Name of the global dropdown to retrieve.
+ * @returns {string[]} Array of strings representing the choosable values.
  */
 function validationContext_GetGlobalDropdown(globalDropdownName){
   return ValidationContext.getGlobalDropdownValues(globalDropdownName);
 }
 
 /**
- * Retrieves the configured static dropdown values of an object
- * @param {string} objectName - Object we want the columns of
- * @param {string} dropdownFieldName - Name of the static dropdown column to retrieve values of
- * @returns {string[]} Array of dropdown values
+ * Retrieves the configured static dropdown values of an object.
+ * @param {string} objectName - Object we want the columns of.
+ * @param {string} dropdownFieldName - Name of the static dropdown column to retrieve values of.
+ * @returns {string[]} Array of dropdown values.
  */
 function validationContext_getObjectStaticDropdown(objectName, dropdownFieldName){
   return ValidationContext.getObjectDropdownColumnValues(objectName, dropdownFieldName);
@@ -557,6 +692,7 @@ function validationContext_getObjectStaticDropdown(objectName, dropdownFieldName
 
 /**
  * Global function to process validation on edit events.
+ * @param {GoogleAppsScript.Events.SheetsOnEdit} e - The edit event object.
  * @deprecated Deprecated on 2026-06-24. Will be obsolete and safe to remove on or after 2026-12-24.
  * Use RecordManager.processRecordEdit directly.
  */

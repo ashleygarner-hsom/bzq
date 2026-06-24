@@ -5,8 +5,9 @@
 class FormsEngine {
   /**
    * Main entry point to call from the client project to fetch and render the form content.
-   * @param {string} objectName - The name of the object to build a form for
-   * @returns {string} The evaluated HTML string content of the form template
+   * Renders the FormTemplate.html template file with fields metadata.
+   * @param {string} objectName - The name of the object to build a form for (e.g. "Prospect").
+   * @returns {string} The evaluated HTML string content of the form template.
    */
   static getObjectForm_(objectName) {
     AppsUtilities.loggingManager_LogDebugMessage(`Object name: ${objectName}`);
@@ -28,9 +29,9 @@ class FormsEngine {
 
   /**
    * Retrieves the name of the form to use for the requested object name if the form is enabled.
-   * @param {string} objectName - The name of the object for which a form is needed
-   * @returns {string} The name of the form used in the configuration workbook
-   * @throws {Error} Form either is not enabled or does not exist
+   * @param {string} objectName - The name of the object for which a form is needed.
+   * @returns {string} The name of the form used in the configuration workbook.
+   * @throws {Error} If the form configuration is missing or is not enabled for use.
    */
   static getFormName_(objectName) {
     const formsList = SpreadsheetApp.openById(FormsEngineGlobalProperties.formsEngineWorkbookId_)
@@ -53,6 +54,13 @@ class FormsEngine {
 
   /**
    * Resolves options list for a LOOKUP field.
+   * Looks up from cross-workbook data, global dropdowns, or static local dropdowns.
+   * @param {string} type - Field type name (typically "LOOKUP").
+   * @param {string} refObject - The target reference object name for cross-workbook lookups.
+   * @param {string} refDropdown - The target global dropdown config name.
+   * @param {string} field - The target local field name.
+   * @param {string} objectName - The plural/singular object name of the current form.
+   * @returns {string[]} Array of string choices for the lookup dropdown.
    * @private
    */
   static resolveLookupField_(type, refObject, refDropdown, field, objectName) {
@@ -70,9 +78,9 @@ class FormsEngine {
 
   /**
    * Retrieves the entire form definition from its page in the workbook.
-   * @param {string} formName - The name of the form as listed in the Forms sheet
-   * @param {string} objectName - The name of the object correlating with the form
-   * @returns {Array<Object>} Array of field configuration objects
+   * @param {string} formName - The name of the form as listed in the Forms sheet.
+   * @param {string} objectName - The name of the object correlating with the form.
+   * @returns {Array<{ field: string, displayName: string, type: string, validation: string, options: string[] }>} Array of field configuration objects.
    */
   static getFormDefinition_(formName, objectName) {
     AppsUtilities.loggingManager_LogDebugMessage(`Getting definition for form ${formName} for object ${objectName}`);
@@ -94,9 +102,9 @@ class FormsEngine {
 
   /**
    * Handles form submission by piping data directly into the AppsUtilities RecordManager.
-   * @param {Object} formData - The key-value representation of the form data
-   * @param {string} objectName - The name of the object (correlating with the datasheet name)
-   * @returns {string} Success confirmation message
+   * @param {Object<string, *>} formData - The key-value representation of the form data.
+   * @param {string} objectName - The name of the object (correlating with the datasheet name).
+   * @returns {string} Success confirmation message.
    */
   static processFormSubmission(formData, objectName) {
     return AppsUtilities.recordManager_addRecord(objectName, formData);
@@ -105,8 +113,8 @@ class FormsEngine {
   /**
    * Builds the "Entry Forms" submenu for the spreadsheet UI.
    * Registers the static entry forms triggers.
-   * @param {GoogleAppsScript.Base.Ui} ui - The Apps Script UI environment object
-   * @returns {GoogleAppsScript.Base.Menu} The constructed Entry Forms submenu
+   * @param {GoogleAppsScript.Base.Ui} ui - The Apps Script UI environment object.
+   * @returns {GoogleAppsScript.Base.Menu} The constructed Entry Forms submenu.
    */
   static buildEntryFormsMenu(ui) {
     AppsUtilities.loggingManager_LogDebugMessage("FormsEngine: buildEntryFormsMenu starting...");
@@ -127,9 +135,10 @@ class FormsEngine {
 
 /** 
  * Include facilitates the use of the layout, script, header, and footer HTML template files.
- * @param {string} filename - Name of the html file to render
- * @param {Object} [templateData] - Any template data to pipe into the rendered HTML
- * @returns {string} The rendered HTML content
+ * Evaluates templates and injects contextual variable parameters.
+ * @param {string} filename - Name of the html file to render.
+ * @param {Object<string, *>} [templateData=null] - Any template data to pipe into the rendered HTML.
+ * @returns {string} The rendered HTML content.
  */
 function formsEngine_include(filename, templateData = null) {
   const template = HtmlService.createTemplateFromFile(filename);
@@ -141,6 +150,7 @@ function formsEngine_include(filename, templateData = null) {
 
 /**
  * Used for testing during development.
+ * @returns {void}
  * @deprecated Deprecated on 2026-06-24. Will be obsolete and safe to remove on or after 2026-12-24.
  */
 function formsEngine_adHocTest() {
@@ -149,7 +159,9 @@ function formsEngine_adHocTest() {
 
 /**
  * Primary method called to render form sidebar.
- * @param {string} objectName - System name of the object
+ * Displays the HTML layout template.
+ * @param {string} objectName - System name of the object.
+ * @returns {void}
  */
 function formsEngine_doGetForm(objectName) {
   const formPage = HtmlService.createTemplateFromFile("Layout");
@@ -167,7 +179,7 @@ function formsEngine_doGetForm(objectName) {
 /**
  * Wrapper for the static getObjectForm method, retrieves data needed for the form template to render.
  * @param {string} objectName - Name of the object for which we are requesting a form.
- * @returns {string} Evaluated HTML content
+ * @returns {string} Evaluated HTML content.
  */
 function formsEngine_getObjectForm(objectName) {
   return FormsEngine.getObjectForm_(objectName);
@@ -175,9 +187,9 @@ function formsEngine_getObjectForm(objectName) {
 
 /**
  * Global wrapper to process form submissions.
- * @param {Object} formData - The key-value representation of the form data
- * @param {string} objectName - Name of the object/datasheet
- * @returns {string} Success confirmation message
+ * @param {Object<string, *>} formData - The key-value representation of the form data.
+ * @param {string} objectName - Name of the object/datasheet.
+ * @returns {string} Success confirmation message.
  */
 function formsEngine_processFormSubmission(formData, objectName) {
   return FormsEngine.processFormSubmission(formData, objectName);
@@ -185,8 +197,8 @@ function formsEngine_processFormSubmission(formData, objectName) {
 
 /**
  * Global wrapper to build the Entry Forms menu.
- * @param {GoogleAppsScript.Base.Ui} ui - The spreadsheet UI object
- * @returns {GoogleAppsScript.Base.Menu} The Entry Forms menu
+ * @param {GoogleAppsScript.Base.Ui} ui - The spreadsheet UI object.
+ * @returns {GoogleAppsScript.Base.Menu} The Entry Forms menu.
  */
 function formsEngine_buildEntryFormsMenu(ui) {
   return FormsEngine.buildEntryFormsMenu(ui);
@@ -194,6 +206,7 @@ function formsEngine_buildEntryFormsMenu(ui) {
 
 /**
  * Global wrapper to open a form for the active sheet.
+ * @returns {void}
  */
 function formsEngine_openActiveSheetForm() {
   const activeSheetName = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet().getName();
@@ -202,6 +215,7 @@ function formsEngine_openActiveSheetForm() {
 
 /**
  * Global wrapper to show the Form Picker in the sidebar.
+ * @returns {void}
  */
 function formsEngine_showFormPicker() {
   const formPage = HtmlService.createTemplateFromFile("FormPicker");
@@ -214,7 +228,8 @@ function formsEngine_showFormPicker() {
 
 /**
  * Global wrapper to get the list of enabled forms.
- * @returns {Array<Object>} List of form configurations
+ * @returns {Array<{ objectName: string, formName: string }>} List of form configurations.
+ * @throws {Error} If forms configuration cannot be loaded.
  */
 function formsEngine_getEnabledFormsList() {
   try {

@@ -1,13 +1,16 @@
 /**
- * Static class that contains general sheet management utilities
+ * Static class that contains general sheet management utilities.
+ * Provides helper operations for column coordinate lookups, row serialization, and record property mapping.
  */
 class GlobalUtilities {
   /**
    * Looks in the first (or provided) row of the specified sheet in the specified workbook for the provided string header name.
-   * @param {Object} sheetInfo - Sheet identifying info { spreadsheetId, sheetName }
-   * @param {string} fieldNameToLocate - Name of the id field, typically the single form of the sheet name
-   * @param {number} headerNum - The row of the data sheet where primary headers are located, defaults to 1
-   * @returns {number} The column number of the located field
+   * Finds the 1-based column index of a header.
+   * @param {{ spreadsheetId: string, sheetName: string }} sheetInfo - Sheet identifying info containing spreadsheetId and sheetName.
+   * @param {string} fieldNameToLocate - Name of the header field to locate.
+   * @param {number} [headerNum=1] - The row index of the datasheet where primary headers are located (defaults to 1).
+   * @returns {number} The 1-based column index of the located field.
+   * @throws {Error} If the spreadsheet/sheet cannot be opened or if the field is not found.
    */
   static getColumnIndexOnSheet(sheetInfo, fieldNameToLocate, headerNum = 1) {
     const { spreadsheetId, sheetName } = sheetInfo;
@@ -25,11 +28,12 @@ class GlobalUtilities {
   }
 
   /**
-   * Gets the letter of the column index in the provided spreadsheet
-   * @param {string} spreadSheetId - Spreadsheet we are looking in
-   * @param {string} sheetName - The name of the sheet to look in
-   * @param {number} columnNumber - Number of the column in the sheet to lookup
-   * @returns {string} The letter of the column in a string
+   * Gets the letter of the column index in the provided spreadsheet.
+   * @param {string} spreadSheetId - The ID of the spreadsheet workbook.
+   * @param {string} sheetName - The name of the sheet to look in.
+   * @param {number} columnNumber - The 1-based column index number.
+   * @returns {string} The letter of the column in a string (e.g., "A", "Z", "AA").
+   * @throws {Error} If the spreadsheet or sheet cannot be opened.
    */
   static getColumnLetter(spreadSheetId, sheetName, columnNumber) {
     const ss = SpreadsheetApp.openById(spreadSheetId);
@@ -44,10 +48,11 @@ class GlobalUtilities {
   }
 
   /**
-   * Dynamically maps a row array to a key-value object using the headers list.
-   * @param {string[]} headers - Sheet header columns
-   * @param {any[]} row - Data row values
-   * @returns {Object} Mapped object
+   * Dynamically maps a row array of cells to a key-value object using the headers list.
+   * Skips empty column headers.
+   * @param {string[]} headers - Sheet header columns list.
+   * @param {any[]} row - Data row values in corresponding indices.
+   * @returns {Object<string, any>} Mapped object with keys corresponding to headers.
    */
   static getRowDataAsObject(headers, row) {
     const obj = {};
@@ -62,6 +67,10 @@ class GlobalUtilities {
 
   /**
    * Helper to build a lookup map from sheet data.
+   * Maps values in the first column to the values in the target column.
+   * @param {Array<Array<*>>} data - The 2D array of sheet values.
+   * @param {number} targetColIndex - The 0-based column index representing the target property column.
+   * @returns {Object<string, *>} Lookup map mapping trimmed key strings to target values.
    * @private
    */
   static buildLookupMap_(data, targetColIndex) {
@@ -77,6 +86,9 @@ class GlobalUtilities {
 
   /**
    * Helper to resolve lookup values in a 2D array or list.
+   * @param {string|number|Array<Array<*>>} lookupValue - Single search value or 2D array of values.
+   * @param {Object<string, *>} lookupMap - The lookup map built using buildLookupMap_.
+   * @returns {Array<Array<*>>|Array<*>} The resolved lookup value(s), maintaining the original dimensions.
    * @private
    */
   static resolveLookupArray_(lookupValue, lookupMap) {
@@ -95,10 +107,10 @@ class GlobalUtilities {
   /**
    * Retrieves a property value from an Object's Datasheet via a lookup value.
    * Supports both single values and 2D arrays (useful inside ARRAYFORMULA).
-   * @param {string} objectName - Short or full name of the object
-   * @param {string|number|any[][]} lookupValue - The single value or 2D array of values to look up
-   * @param {string} propertyName - The name of the property/header to retrieve
-   * @returns {any|any[][]|null} The resolved property value(s), or null if not found
+   * @param {string} objectName - Short or full name of the object type.
+   * @param {string|number|Array<Array<*>>} lookupValue - The single value or 2D array of values to look up.
+   * @param {string} propertyName - The header/property name of the column to retrieve the value from.
+   * @returns {any|Array<Array<*>>|null} The resolved property value(s), or null if not found.
    */
   static getObjectPropertyValue(objectName, lookupValue, propertyName) {
     if (!objectName || lookupValue === undefined || lookupValue === null || !propertyName) {
@@ -127,6 +139,9 @@ class GlobalUtilities {
 
   /**
    * Resolves the sheet configuration for a given object.
+   * Looks up configuration properties or falls back to sheet name matching.
+   * @param {string} objectName - Short or full name of the object type.
+   * @returns {{ spreadsheetId: string, sheetName: string, headerNumber: number }|null} The sheet location and header configuration, or null if unresolved.
    * @private
    */
   static resolveSheetConfig_(objectName) {
@@ -158,6 +173,10 @@ class GlobalUtilities {
 
   /**
    * Helper to retrieve values and headers from a target spreadsheet sheet.
+   * @param {string} spreadsheetId - The ID of the target spreadsheet.
+   * @param {string} sheetName - The name of the target sheet.
+   * @param {number} headerNumber - The 1-based row index of the headers.
+   * @returns {{ sheetName: string, headers: string[], data: Array<Array<*>> }|null} Sheet data metadata and grid values, or null if empty/missing.
    * @private
    */
   static readSheetDataRange_(spreadsheetId, sheetName, headerNumber) {
@@ -188,8 +207,8 @@ class GlobalUtilities {
 
   /**
    * Retrieves headers and row data for an object's datasheet.
-   * @param {string} objectName - Short or full name of the object
-   * @returns {Object|null} Object containing { sheetName, headers, data } or null if not found/error
+   * @param {string} objectName - Short or full name of the object.
+   * @returns {{ sheetName: string, headers: string[], data: Array<Array<*>> }|null} Sheet data metadata and grid values, or null if configuration or read error occurs.
    * @private
    */
   static getDatasheetData_(objectName) {
@@ -209,6 +228,11 @@ class GlobalUtilities {
 
 /**
  * Looks in the first (or provided) row of the specified sheet in the specified workbook for the provided string header name.
+ * @param {string} spreadsheetId - The target spreadsheet ID.
+ * @param {string} sheetName - The target sheet name.
+ * @param {string} fieldNameToLocate - The header name string to locate.
+ * @param {number} [headerNum=1] - The 1-based header row index (defaults to 1).
+ * @returns {number} The 1-based column index of the located field.
  * @deprecated Deprecated on 2026-06-24. Will be obsolete and safe to remove on or after 2026-12-24.
  * Use GlobalUtilities.getColumnIndexOnSheet instead.
  */
@@ -217,7 +241,11 @@ function globalUtilities_GetColumnIndexOnSheet(spreadsheetId, sheetName, fieldNa
 }
 
 /**
- * Gets the letter of the column index in the provided spreadsheet
+ * Gets the letter of the column index in the provided spreadsheet.
+ * @param {string} spreadSheetId - The target spreadsheet ID.
+ * @param {string} sheetName - The name of the sheet to look in.
+ * @param {number} columnNumber - The 1-based column index.
+ * @returns {string} The column letter string.
  * @deprecated Deprecated on 2026-06-24. Will be obsolete and safe to remove on or after 2026-12-24.
  * Use GlobalUtilities.getColumnLetter instead.
  */
@@ -230,10 +258,10 @@ function globalUtilities_GetColumnLetter(spreadSheetId, sheetName, columnNumber)
  * Exposes this utility to spreadsheet users as a custom function.
  * Note: When used as a custom formula in a cell, this function can only read from the active spreadsheet due to Apps Script permission restrictions.
  *
- * @param {string} objectName The short or full name of the object.
- * @param {string} lookupValue The value to search for in the first column of the datasheet.
- * @param {string} propertyName The header name of the column to retrieve the value from.
- * @return {any} The value of the property from the matching record.
+ * @param {string} objectName - The short or full name of the object.
+ * @param {string} lookupValue - The value to search for in the first column of the datasheet.
+ * @param {string} propertyName - The header name of the column to retrieve the value from.
+ * @returns {any} The value of the property from the matching record.
  * @customfunction
  */
 function GET_OBJECT_PROPERTY(objectName, lookupValue, propertyName) {
@@ -242,6 +270,10 @@ function GET_OBJECT_PROPERTY(objectName, lookupValue, propertyName) {
 
 /**
  * Retrieves a property value from an Object's Datasheet via a lookup value.
+ * @param {string} objectName - The short or full name of the object.
+ * @param {string} lookupValue - The value to search for in the first column of the datasheet.
+ * @param {string} propertyName - The header name of the column to retrieve the value from.
+ * @returns {any} The value of the property from the matching record.
  * @deprecated Deprecated on 2026-06-24. Will be obsolete and safe to remove on or after 2026-12-24.
  * Use GlobalUtilities.getObjectPropertyValue instead.
  */

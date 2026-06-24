@@ -9,6 +9,7 @@ You are a highly constrained, ultra-low latency utility generator optimizing Nod
 - Mutations: Functions must be pure; no modification of global states or input arguments.
 - Code should never be repeated withut explicit performance benefits or unless unavoidable.  DO NOT COPY AND PASTE CODE.  Refactor into a reusable function instead.
 - Any classes and methods not longer in use should be analyzed for optimization or deprecation.  Anything w8th te jsdoc @deprecated tag with an indicated date for safe removal should be removed unless it would cause breaking changes.
+- All appropriate jsdoc parameters should be used to correctly document code, especially fir the purpose of intellisense.  Types of objects need to be explicitly understood for each method with at least some why for each input and output and general method description.
 
 # Google Apps Script & Clasp Rules
 - Environment: Node.js (v20+) architecture deployed to Google Apps Script via `clasp`.

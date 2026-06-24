@@ -3,7 +3,9 @@
  */
 class FormatManager {
   /**
-   * Helper to retrieve and parse a saved format configuration.
+   * Helper to retrieve and parse a saved format configuration from the properties sheet.
+   * @param {string} formatKey - The configuration key for the format (e.g. "HEADER_FORMAT").
+   * @returns {Object|null} Mapped formatting options object containing styles/borders, or null if missing/failed.
    * @private
    */
   static getFormatObj_(formatKey) {
@@ -20,9 +22,11 @@ class FormatManager {
 
   /**
    * Formats a row in a datasheet using the stored header or record formatting.
-   * @param {SpreadsheetApp.Sheet} sheet - The target sheet
-   * @param {number} row - The row index to format
-   * @param {Object} objConfig - The datasheet object configuration
+   * Applies the HEADER_FORMAT if the row matches the configured header row, otherwise RECORD_FORMAT.
+   * @param {SpreadsheetApp.Sheet} sheet - The target sheet to apply formatting to.
+   * @param {number} row - The 1-based row index to format.
+   * @param {{ "Header Number": (string|number) }} objConfig - The datasheet object configuration containing "Header Number".
+   * @returns {void}
    */
   static formatRow(sheet, row, objConfig) {
     if (!sheet || !objConfig) return;
@@ -41,8 +45,9 @@ class FormatManager {
   }
   
   /**
-   * Captures format from the active cell and saves it as HEADER_FORMAT in the configurations.
-   * @param {SpreadsheetApp.Range} range - The source cell/range
+   * Captures format from the active cell of the range and saves it as HEADER_FORMAT in the configurations.
+   * @param {SpreadsheetApp.Range} range - The source cell/range to copy the format from.
+   * @returns {void}
    */
   static saveHeaderFormat(range) {
     const format = this.getCellFormat_(range);
@@ -50,8 +55,9 @@ class FormatManager {
   }
 
   /**
-   * Captures format from the active cell and saves it as RECORD_FORMAT in the configurations.
-   * @param {SpreadsheetApp.Range} range - The source cell/range
+   * Captures format from the active cell of the range and saves it as RECORD_FORMAT in the configurations.
+   * @param {SpreadsheetApp.Range} range - The source cell/range to copy the format from.
+   * @returns {void}
    */
   static saveRecordFormat(range) {
     const format = this.getCellFormat_(range);
@@ -60,8 +66,9 @@ class FormatManager {
 
   /**
    * Captures formatting from the top-left cell of a range.
-   * @param {SpreadsheetApp.Range} range - Range to capture from
-   * @returns {Object} Format properties
+   * Serializes text style, background color, alignments, and borders.
+   * @param {SpreadsheetApp.Range} range - Range to capture formatting from.
+   * @returns {{ background: string, fontColor: string, fontFamily: string, fontSize: number, fontWeight: string, fontStyle: string, fontLine: string, horizontalAlignment: string, verticalAlignment: string, borders: Object|null }} Format properties object.
    * @private
    */
   static getCellFormat_(range) {
@@ -82,7 +89,10 @@ class FormatManager {
   
   /**
    * Applies the stored header format (HEADER_FORMAT) to each cell in the provided range.
-   * @param {SpreadsheetApp.Range} range - The spreadsheet range to format
+   * Reads from the configurations cache.
+   * @param {SpreadsheetApp.Range} range - The spreadsheet range to format.
+   * @returns {void}
+   * @throws {Error} If header format is not saved in configuration yet.
    */
   static applyHeaderFormat(range) {
     const formatStr = ConfigurationManager.getConfigValue("HEADER_FORMAT");
@@ -94,7 +104,10 @@ class FormatManager {
 
   /**
    * Applies the stored record format (RECORD_FORMAT) to each cell in the provided range.
-   * @param {SpreadsheetApp.Range} range - The spreadsheet range to format
+   * Reads from the configurations cache.
+   * @param {SpreadsheetApp.Range} range - The spreadsheet range to format.
+   * @returns {void}
+   * @throws {Error} If record format is not saved in configuration yet.
    */
   static applyRecordFormat(range) {
     const formatStr = ConfigurationManager.getConfigValue("RECORD_FORMAT");
@@ -106,6 +119,9 @@ class FormatManager {
 
   /**
    * Applies non-border text and background formatting options to a spreadsheet range.
+   * @param {SpreadsheetApp.Range} range - The target spreadsheet range.
+   * @param {Object} formatObj - The formatting properties object containing styles.
+   * @returns {void}
    * @private
    */
   static applyBasicStyles_(range, formatObj) {
@@ -122,6 +138,11 @@ class FormatManager {
 
   /**
    * Helper to set a specific border side on a range.
+   * @param {SpreadsheetApp.Range} range - The target spreadsheet range.
+   * @param {string} sideName - The side to apply ('top', 'left', 'bottom', 'right').
+   * @param {boolean} hasSide - Whether this border side is active.
+   * @param {{ color: string|null, style: string|null }|null} sideConfig - The style/color configurations for the side.
+   * @returns {void}
    * @private
    */
   static applySideBorder_(range, sideName, hasSide, sideConfig) {
@@ -143,6 +164,10 @@ class FormatManager {
 
   /**
    * Orchestrates the border rendering process.
+   * Applies borders to top, bottom, left, right, and vertical separators.
+   * @param {SpreadsheetApp.Range} range - The target spreadsheet range.
+   * @param {{ top: Object|null, bottom: Object|null, left: Object|null, right: Object|null }} borders - Mapped border side configurations.
+   * @returns {void}
    * @private
    */
   static applyBorders_(range, borders) {
@@ -166,8 +191,10 @@ class FormatManager {
 
   /**
    * Applies formatting options to a spreadsheet range.
-   * @param {SpreadsheetApp.Range} range - The spreadsheet range to format
-   * @param {Object} formatObj - The formatting properties object
+   * Maps styles and borders from the format definition.
+   * @param {SpreadsheetApp.Range} range - The spreadsheet range to format.
+   * @param {Object} formatObj - The formatting properties object.
+   * @returns {void}
    * @private
    */
   static applyFormatToRange_(range, formatObj) {
@@ -179,6 +206,9 @@ class FormatManager {
 
   /**
    * Formats a single border side structure for serialization.
+   * Extracts HEX color and border style name.
+   * @param {SpreadsheetApp.Border} sideObj - The Google Apps Script border object.
+   * @returns {{ style: string, color: string }|null} Mapped properties or null if border is inactive.
    * @private
    */
   static serializeBorderSide_(sideObj) {
@@ -200,8 +230,9 @@ class FormatManager {
 
   /**
    * Captures cell border styles for serialization.
-   * @param {SpreadsheetApp.Range} cell - Single cell range
-   * @returns {Object|null} Border styles object or null
+   * Captures top, bottom, left, and right borders of the top-left cell.
+   * @param {SpreadsheetApp.Range} cell - Single cell range.
+   * @returns {{ top: Object|null, bottom: Object|null, left: Object|null, right: Object|null }|null} Border styles object or null if no active borders.
    * @private
    */
   static getCellBorder_(cell) {

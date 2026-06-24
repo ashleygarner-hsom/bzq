@@ -1,9 +1,12 @@
 /**
  * Retrieves and manages sequence configuration data.
+ * Coordinates generation and auto-incrementing of alphanumeric sequence IDs.
  */
 class SequenceManager {
   /**
-   * Reference to the configuration properties spreadsheet
+   * Reference to the configuration properties spreadsheet.
+   * Opened using the workbook ID stored in AppUtilitiesGlobalProperties.
+   * @type {SpreadsheetApp.Spreadsheet}
    * @private
    */
   static get spreadsheet_(){
@@ -11,7 +14,9 @@ class SequenceManager {
   }
   
   /**
-   * Reference to the sheet containing sequence data
+   * Reference to the sheet containing sequence configuration data.
+   * Retrieved from the configuration workbook by name.
+   * @type {SpreadsheetApp.Sheet}
    * @private
    */
   static get sequenceSheet_() {
@@ -19,11 +24,12 @@ class SequenceManager {
   }
 
   /**
-   * Gets the index of the row matching the datasheet name.
-   * @param {any[][]} data - Sheet values
-   * @param {string} name - Datasheet name to find
-   * @param {number} colIndex - Column index of "Datasheet Name"
-   * @returns {number} The matching row index, or -1 if not found
+   * Gets the index of the row matching the datasheet name in the sequence configuration sheet.
+   * Used to locate where a specific sheet's sequence is stored.
+   * @param {Array<Array<*>>} data - The 2D array of sheet values to search through.
+   * @param {string} name - Plural datasheet name/object name to locate.
+   * @param {number} colIndex - The 0-based column index representing the "Datasheet Name" column.
+   * @returns {number} The matching 0-based row index, or -1 if not found.
    * @private
    */
   static getSequenceRowIndex_(data, name, colIndex) {
@@ -37,8 +43,10 @@ class SequenceManager {
 
   /**
    * Gets and validates column indices from sequence configuration headers.
-   * @param {string[]} headers - Headers list
-   * @returns {Object} Column indices { ds, prefix, val }
+   * Ensures necessary column fields exist in the header row.
+   * @param {string[]} headers - The array of headers from the first row of the sequence sheet.
+   * @returns {{ ds: number, prefix: number, val: number }} Column indices for Datasheet Name (ds), Sequence Prefix (prefix), and Current Value (val).
+   * @throws {Error} If any required column is missing.
    * @private
    */
   static getRequiredColIndices_(headers) {
@@ -56,8 +64,9 @@ class SequenceManager {
   /**
    * For the provided datasheet name, retrieves the next sequence value to use and increments the record for the next value.
    * Uses dynamic header mapping to locate columns.
-   * @param {string} dataSheetName - The plural of the business object which is also used as the sheet name
-   * @returns {string | null} The next value in the sequence to use, or null if the processing failed
+   * @param {string} dataSheetName - The plural of the business object which is also used as the sheet name.
+   * @returns {string | null} The next value in the sequence to use (e.g. "PR-100"), or null if processing failed.
+   * @throws {Error} If sequence configuration is empty or target datasheet name configuration row cannot be found.
    */
   static processSequenceForObject(dataSheetName) {
     if (!dataSheetName) return null;

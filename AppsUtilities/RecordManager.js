@@ -5,6 +5,9 @@
 class RecordManager {
   /**
    * Retrieves the object configuration, spreadsheet, and sheet by sheet name or object name.
+   * @param {string} sheetNameOrObjectName - Plural datasheet name or singular object name to query.
+   * @returns {{ objConfig: Object, spreadsheet: SpreadsheetApp.Spreadsheet, sheet: SpreadsheetApp.Sheet }} Location and configuration details.
+   * @throws {Error} If configuration sheet or sheet cannot be resolved.
    * @private
    */
   static getSheetAndConfig_(sheetNameOrObjectName) {
@@ -27,6 +30,11 @@ class RecordManager {
 
   /**
    * Finalizes a newly created record row by applying formatting and validation rules.
+   * @param {SpreadsheetApp.Spreadsheet} spreadsheet - The active spreadsheet object.
+   * @param {SpreadsheetApp.Sheet} sheet - The target sheet where record was created.
+   * @param {number} row - The 1-based index of the new row.
+   * @param {Object} objConfig - The object configuration metadata record.
+   * @returns {void}
    * @private
    */
   static finalizeNewRecordRow_(spreadsheet, sheet, row, objConfig) {
@@ -47,6 +55,9 @@ class RecordManager {
   /**
    * Call this method when a new record is being entered from the spreadsheet grid.
    * Coordinates sequence retrieval, styling, and validation triggers.
+   * @param {string} sheetName - Plural name of the datasheet.
+   * @param {boolean} [isForForm=false] - If true, returns sequence ID and bypasses row insertion.
+   * @returns {string|null} Generated sequence ID if isForForm is true, otherwise null.
    */
   static newRecord(sheetName, isForForm = false) {
     const { objConfig, spreadsheet, sheet } = this.getSheetAndConfig_(sheetName);
@@ -68,6 +79,10 @@ class RecordManager {
 
   /**
    * Adds a new record to the sheet associated with the given object type.
+   * Maps input properties to columns and appends the row to the sheet.
+   * @param {string} objectType - Singular or plural name of the object type.
+   * @param {Object<string, *>} recordData - Key-value pair object representing record fields.
+   * @returns {string} Success message.
    */
   static addRecord(objectType, recordData) {
     const { objConfig, spreadsheet, sheet } = this.getSheetAndConfig_(objectType);
@@ -88,6 +103,9 @@ class RecordManager {
 
   /**
    * Processes record edits on watched sheets, routing them to the validation context.
+   * Bypassed if edit is not in a watched sheet.
+   * @param {GoogleAppsScript.Events.SheetsOnEdit} e - The Google Apps Script edit event object.
+   * @returns {void}
    */
   static processRecordEdit(e) {
     if (!e || !e.range) return;
@@ -109,6 +127,10 @@ class RecordManager {
 
   /**
    * Processes row-level edits (formatting and ID auto-population) for the edited range.
+   * @param {SpreadsheetApp.Sheet} sheet - The edited sheet.
+   * @param {SpreadsheetApp.Range} range - The edited range of cells.
+   * @param {Object} objConfig - The configuration metadata for the edited datasheet.
+   * @returns {void}
    * @private
    */
   static processEditRows_(sheet, range, objConfig) {
@@ -127,6 +149,10 @@ class RecordManager {
 
   /**
    * Auto-populates the Sequence ID for a given row if it is missing and the row contains other data.
+   * @param {SpreadsheetApp.Sheet} sheet - The target sheet.
+   * @param {number} row - The 1-based index of the row to process.
+   * @param {Object} objConfig - Configuration metadata of the datasheet.
+   * @returns {void}
    * @private
    */
   static autoPopulateIdIfNeeded_(sheet, row, objConfig) {
@@ -150,6 +176,10 @@ class RecordManager {
 
   /**
    * Retrieves the range (single cell) of the ID field for a specific row in a sheet.
+   * @param {SpreadsheetApp.Sheet} sheet - The target sheet.
+   * @param {number} row - The 1-based index of the row.
+   * @param {Object} objConfig - The datasheet configuration metadata.
+   * @returns {SpreadsheetApp.Range|null} Cell range for the ID field, or null if field cannot be resolved.
    * @private
    */
   static getIdCellRange_(sheet, row, objConfig) {
@@ -173,6 +203,10 @@ class RecordManager {
 
   /**
    * Helper to check if all cell values in a given row are empty.
+   * @param {SpreadsheetApp.Sheet} sheet - The target sheet.
+   * @param {number} row - The 1-based index of the row to check.
+   * @param {number} lastCol - Last column index to scan.
+   * @returns {boolean} True if all cell values are empty, false otherwise.
    * @private
    */
   static checkAllRowValuesEmpty_(sheet, row, lastCol) {
@@ -189,6 +223,8 @@ class RecordManager {
 
 /**
  * For the provided sheetName (plural of object) generates the next sequence value and adds it to the requested sheet.
+ * @param {string} sheetName - Plural name of the datasheet.
+ * @returns {void}
  * @deprecated Deprecated on 2026-06-24. Will be obsolete and safe to remove on or after 2026-12-24.
  * Use RecordManager.newRecord instead.
  */
@@ -198,8 +234,8 @@ function newRecord(sheetName) {
 
 /**
  * Validates and increments sequence for the provided sheetName's Id.
- * @param {string} sheetName - The sheetName is also the plural of the underlying data objects
- * @returns {string} The next Id to use for the requested object
+ * @param {string} sheetName - The sheetName is also the plural of the underlying data objects.
+ * @returns {string} The next Id to use for the requested object.
  */
 function requestRecordIdForForm(sheetName) {
   return RecordManager.newRecord(sheetName, true);
@@ -207,6 +243,8 @@ function requestRecordIdForForm(sheetName) {
 
 /**
  * Processes record edits on watched sheets, routing them to the validation context.
+ * @param {GoogleAppsScript.Events.SheetsOnEdit} e - The edit event object.
+ * @returns {void}
  * @deprecated Deprecated on 2026-06-24. Will be obsolete and safe to remove on or after 2026-12-24.
  * Use RecordManager.processRecordEdit directly.
  */
@@ -216,9 +254,9 @@ function recordManager_processRecordEdit(e) {
 
 /**
  * Global wrapper to add a new record to the sheet for the given object type.
- * @param {string} objectType - The name of the object type (sheet name)
- * @param {Object} recordData - Key-value pair object representing record fields
- * @returns {string} Success message
+ * @param {string} objectType - The name of the object type (sheet name).
+ * @param {Object<string, *>} recordData - Key-value pair object representing record fields.
+ * @returns {string} Success message.
  */
 function recordManager_addRecord(objectType, recordData) {
   return RecordManager.addRecord(objectType, recordData);

@@ -1,7 +1,8 @@
 /**
  * Simple trigger that runs when a user opens the spreadsheet.
  * Registers custom UI menus.
- * @param {Object} [containerScope] - The calling script's global scope (if invoked from a container script library delegation)
+ * @param {Object} [containerScope] - The calling script's global scope (if invoked from a container script library delegation).
+ * @returns {void}
  */
 function onOpen(containerScope) {
   LoggingManager.LogDebugMessage_("AppsUtilities: simple trigger onOpen running...");
@@ -12,7 +13,8 @@ function onOpen(containerScope) {
 /**
  * Simple trigger that runs when a user edits a cell in a spreadsheet.
  * Safely exits if running as simple trigger to prevent authorization exceptions.
- * @param {GoogleAppsScript.Events.SheetsOnEdit} e - The edit event object
+ * @param {GoogleAppsScript.Events.SheetsOnEdit} e - The edit event object.
+ * @returns {void}
  */
 function onEdit(e) {
   // Simple triggers cannot make calls requiring authorization (e.g. SpreadsheetApp.openById).
@@ -24,6 +26,7 @@ function onEdit(e) {
 
 /**
  * Helper invoked by the custom menu to add a new record to the currently active sheet.
+ * @returns {void}
  */
 function triggerAddRecordToActivePage() {
   const activeSheet = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
@@ -33,6 +36,8 @@ function triggerAddRecordToActivePage() {
 
 /**
  * Programmatically registers the installable triggers to run the loading overlay and edit validations.
+ * Checks for existing triggers before creating new ones.
+ * @returns {void}
  */
 function appInit_setupInstallableTrigger() {
   const openTriggerFn = 'appInit_onOpenInstallable';
@@ -85,6 +90,8 @@ function appInit_setupInstallableTrigger() {
 /**
  * Installable trigger callback.
  * Runs with full user authorizations, allowing modal dialog display.
+ * @param {GoogleAppsScript.Events.SheetsOnOpen} e - The open event object.
+ * @returns {void}
  */
 function appInit_onOpenInstallable(e) {
   showLoadingDialog_();
@@ -93,7 +100,8 @@ function appInit_onOpenInstallable(e) {
 /**
  * Installable trigger callback for edit events.
  * Runs with full user authorizations, allowing opening configuration spreadsheets.
- * @param {GoogleAppsScript.Events.SheetsOnEdit} e - The edit event object
+ * @param {GoogleAppsScript.Events.SheetsOnEdit} e - The edit event object.
+ * @returns {void}
  */
 function appInit_onEditInstallable(e) {
   RecordManager.processRecordEdit(e);
@@ -101,6 +109,8 @@ function appInit_onEditInstallable(e) {
 
 /**
  * Internal helper to display the loading modal dialog.
+ * Loads the brand logo from configurations or defaults to standard Sheets logo.
+ * @returns {void}
  * @private
  */
 function showLoadingDialog_() {
@@ -139,6 +149,8 @@ function showLoadingDialog_() {
 
 /**
  * Server-side initialization step 1: Fetches the branded logo URL.
+ * Used inside the Loading dialog.
+ * @returns {string} Branded logo URL.
  */
 function appInit_getLogoUrl() {
   const logoFileId = ConfigurationManager.getConfigValue("LOADING_LOGO");
@@ -162,6 +174,7 @@ function appInit_getLogoUrl() {
 
 /**
  * Server-side initialization step 2: Updates configuration cache.
+ * @returns {boolean} True indicating success.
  */
 function appInit_updateCache() {
   ConfigurationManager.updateCachedConfigValues(false);
@@ -170,6 +183,7 @@ function appInit_updateCache() {
 
 /**
  * Server-side initialization step 3: Pre-caches object configurations to warm up Script Cache.
+ * @returns {boolean} True indicating completion.
  */
 function appInit_preCacheObjects() {
   const sheetName = AppUtilitiesGlobalProperties.objectConfigurationSheetName_;
@@ -198,7 +212,8 @@ function appInit_preCacheObjects() {
 
 /**
  * Server-side initialization step 4: Creates custom menus.
- * @param {Object} [containerScope] - The calling script's global scope (if invoked from library delegation)
+ * @param {Object} [containerScope] - The calling script's global scope (if invoked from library delegation).
+ * @returns {boolean} True indicating menu creation finished.
  */
 function appInit_createMenus(containerScope) {
   const ui = SpreadsheetApp.getUi();
@@ -208,8 +223,9 @@ function appInit_createMenus(containerScope) {
 
 /**
  * Dynamically builds the custom menu for the application.
- * @param {GoogleAppsScript.Base.Ui} ui - The Apps Script UI environment object
- * @param {Object} [containerScope] - The container scope containing globally defined libraries/methods
+ * @param {GoogleAppsScript.Base.Ui} ui - The Apps Script UI environment object.
+ * @param {Object} [containerScope] - The container scope containing globally defined libraries/methods.
+ * @returns {void}
  */
 function buildManageBusinessMenu(ui, containerScope) {
   LoggingManager.LogDebugMessage_("AppsUtilities: buildManageBusinessMenu starting...");
@@ -242,9 +258,10 @@ function buildManageBusinessMenu(ui, containerScope) {
 /**
  * Helper to dynamically load and add the Entry Forms submenu if FormsEngine is enabled.
  * Resolves the FormsEngine namespace inside the container script scope.
- * @param {GoogleAppsScript.Base.Ui} ui - The spreadsheet UI object
- * @param {GoogleAppsScript.Base.Menu} mainMenu - The parent menu object
- * @param {Object} [containerScope] - The container scope containing globally defined libraries/methods
+ * @param {GoogleAppsScript.Base.Ui} ui - The spreadsheet UI object.
+ * @param {GoogleAppsScript.Base.Menu} mainMenu - The parent menu object.
+ * @param {Object} [containerScope] - The container scope containing globally defined libraries/methods.
+ * @returns {void}
  * @private
  */
 function addFormsEngineSubMenuIfEnabled_(ui, mainMenu, containerScope) {
@@ -288,6 +305,7 @@ function addFormsEngineSubMenuIfEnabled_(ui, mainMenu, containerScope) {
 
 /**
  * Menu trigger to capture current active cell formatting and save it as HEADER_FORMAT.
+ * @returns {void}
  */
 function triggerSetHeaderFormat() {
   try {
@@ -302,6 +320,7 @@ function triggerSetHeaderFormat() {
 
 /**
  * Menu trigger to capture current active cell formatting and save it as RECORD_FORMAT.
+ * @returns {void}
  */
 function triggerSetRecordFormat() {
   try {
@@ -316,6 +335,7 @@ function triggerSetRecordFormat() {
 
 /**
  * Menu trigger to reset all cached configurations from their source sheets.
+ * @returns {void}
  */
 function triggerResetConfigurationCache() {
   try {
@@ -328,6 +348,7 @@ function triggerResetConfigurationCache() {
 
 /**
  * Menu trigger to rerun validation on currently selected rows in the active sheet.
+ * @returns {void}
  */
 function triggerValidateSelectedRows() {
   try {
@@ -345,6 +366,7 @@ function triggerValidateSelectedRows() {
 
 /**
  * Menu trigger to apply the stored HEADER_FORMAT to the active range.
+ * @returns {void}
  */
 function triggerApplyHeaderFormat() {
   try {
@@ -362,6 +384,7 @@ function triggerApplyHeaderFormat() {
 
 /**
  * Menu trigger to apply the stored RECORD_FORMAT to the active range.
+ * @returns {void}
  */
 function triggerApplyRecordFormat() {
   try {
