@@ -31,6 +31,21 @@ log_error() {
   exit 1
 }
 
+log_failure() {
+  echo -e "${RED}✘${NC} ${BOLD}ERROR:${NC} $1" >&2
+}
+
+log_auth_failure() {
+  log_banner
+  echo -e "${RED}✘ ERROR: Authentication Failed / Token Expired${NC}" >&2
+  echo -e "${YELLOW}Your Google Apps Script authorization credentials are no longer valid.${NC}" >&2
+  echo -e "To resolve this issue, please reauthenticate by running:" >&2
+  echo -e "  ${BOLD}${CYAN}./bzq login${NC}" >&2
+  echo -e "${YELLOW}Then, try your command again.${NC}" >&2
+  echo -e "${PURPLE}====================================================${NC}" >&2
+  exit 1
+}
+
 log_banner() {
   echo -e "${PURPLE}====================================================${NC}"
   echo -e "   ${BOLD}${CYAN}Biz Qops (Biz Chops) Platform CLI${NC}"

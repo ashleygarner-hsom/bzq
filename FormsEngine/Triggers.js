@@ -51,6 +51,20 @@ function triggerSetRecordFormat() {
 }
 
 /**
+ * Forwarding callback for the "Apply Header Format" utility.
+ */
+function triggerApplyHeaderFormat() {
+  AppsUtilities.triggerApplyHeaderFormat();
+}
+
+/**
+ * Forwarding callback for the "Apply Record Format" utility.
+ */
+function triggerApplyRecordFormat() {
+  AppsUtilities.triggerApplyRecordFormat();
+}
+
+/**
  * Forwarding callback for the installable startup open trigger.
  * @param {GoogleAppsScript.Events.SheetsOnOpen} e - The open event object
  */

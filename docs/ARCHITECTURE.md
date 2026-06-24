@@ -71,6 +71,8 @@ Custom menu items created by `AppsUtilities.onOpen()` resolve in the container's
 * **`triggerResetConfigurationCache()`** -> Delegates to `AppsUtilities.triggerResetConfigurationCache()`
 * **`triggerSetHeaderFormat()`** -> Delegates to `AppsUtilities.triggerSetHeaderFormat()`
 * **`triggerSetRecordFormat()`** -> Delegates to `AppsUtilities.triggerSetRecordFormat()`
+* **`triggerApplyHeaderFormat()`** -> Delegates to `AppsUtilities.triggerApplyHeaderFormat()`
+* **`triggerApplyRecordFormat()`** -> Delegates to `AppsUtilities.triggerApplyRecordFormat()`
 * **`appInit_onOpenInstallable(e)`** -> Delegates to `AppsUtilities.appInit_onOpenInstallable(e)`
 * **`appInit_onEditInstallable(e)`** -> Delegates to `AppsUtilities.appInit_onEditInstallable(e)`
 

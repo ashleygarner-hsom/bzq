@@ -24,7 +24,7 @@ show_help() {
   echo -e "${BOLD}COMMANDS:${NC}"
   echo -e "  ${BOLD}login${NC}                                 Authenticate clasp with your Google Account."
   echo -e "  ${BOLD}pull <folder> [script-id] [options]${NC}    Sync down / clone files from Google Apps Script."
-  echo -e "  ${BOLD}push <folder> [options]${NC}                Push local files up to Google Apps Script."
+  echo -e "  ${BOLD}push [<folder> | --all] [options]${NC}     Push local files up to Google Apps Script."
   echo -e "  ${BOLD}deploy <folder> [description]${NC}          Create a new versioned deployment of the project."
   echo -e "  ${BOLD}status <folder>${NC}                        Check local/remote sync status of files."
   echo ""
@@ -33,7 +33,9 @@ show_help() {
   echo -e "  ${BOLD}-f, --force${NC}                           Force pull, deleting local files that do not exist remotely."
   echo ""
   echo -e "${BOLD}PUSH OPTIONS:${NC}"
-  echo -e "  ${BOLD}-w, --watch${NC}                           Watch for local changes and push them automatically."
+  echo -e "  ${BOLD}-w, --watch${NC}                           Watch for local changes and push them automatically (single package only)."
+  echo -e "  ${BOLD}-a, --all${NC}                             Push all initialized packages."
+  echo -e "  ${BOLD}-x, --exclude <list>${NC}                  Comma-separated list of packages to exclude when using --all."
   echo ""
   echo -e "${BOLD}EXAMPLES:${NC}"
   echo -e "  ${CYAN}# Authenticate first${NC}"
@@ -184,6 +186,8 @@ case "$COMMAND" in
   push)
     FOLDER=""
     WATCH=false
+    PUSH_ALL=false
+    EXCLUDE=""
 
     while [ $# -gt 0 ]; do
       case "$1" in
@@ -191,48 +195,173 @@ case "$COMMAND" in
           WATCH=true
           shift
           ;;
+        -a|--all)
+          PUSH_ALL=true
+          shift
+          ;;
+        -x|--exclude)
+          if [ -n "$2" ] && [[ "$2" != -* ]]; then
+            EXCLUDE="$2"
+            shift 2
+          else
+            log_error "Option --exclude requires a list argument."
+          fi
+          ;;
         -*)
-          log_error "Unknown option: $1"
+          log_error "Unknown option: $1. Run './bzq' for usage instructions."
           ;;
         *)
           if [ -z "$FOLDER" ]; then
             FOLDER="$1"
           else
-            log_error "Unexpected argument: $1"
+            log_error "Unexpected argument: $1. Run './bzq' for usage instructions."
           fi
           shift
           ;;
       esac
     done
 
-    if [ -z "$FOLDER" ]; then
-      log_error "Missing required <folder> argument. Example: './bzq push AppsUtilities'"
-    fi
-
-    TARGET_DIR="/Users/mitchgarner/source/repos/ESR-Biz_Qops/$FOLDER"
-    CLASP_CONFIG="$TARGET_DIR/.clasp.json"
-
-    if [ ! -f "$CLASP_CONFIG" ]; then
-      log_error "Project not initialized in '$FOLDER'. Run './bzq pull $FOLDER <script-id>' first."
-    fi
-
-    ensure_claspignore "$TARGET_DIR"
-
-    (
-      cd "$TARGET_DIR" || log_error "Failed to access directory $TARGET_DIR"
-      if [ "$WATCH" = true ]; then
-        log_info "Watching local files for automatic pushes to Google Apps Script..."
-        npx @google/clasp push --watch
-      else
-        log_info "Pushing local modifications to Google Apps Script..."
-        npx @google/clasp push
+    # Validation Rules
+    if [ "$PUSH_ALL" = true ]; then
+      if [ -n "$FOLDER" ]; then
+        log_error "Cannot specify a target folder when using --all. Did you mean to use --exclude?"
       fi
-    )
-
-    if [ $? -eq 0 ]; then
-      log_success "Pushed code successfully to Google Sheets!"
+      if [ "$WATCH" = true ]; then
+        log_error "Watch mode is only supported when pushing a single package."
+      fi
     else
-      log_error "Failed to push files."
+      if [ -z "$FOLDER" ]; then
+        log_error "Missing required <folder> argument or --all flag. Example: './bzq push AppsUtilities' or './bzq push --all'"
+      fi
+      if [ -n "$EXCLUDE" ]; then
+        log_error "Exclusions are only supported when using --all."
+      fi
+    fi
+
+    # Helper function to check if a folder is in the exclusion list
+    is_excluded() {
+      local item="$1"
+      local list="$2"
+      local IFS=','
+      local element
+      for element in $list; do
+        if [ "$element" = "$item" ]; then
+          return 0 # True (excluded)
+        fi
+      done
+      return 1 # False (not excluded)
+    }
+
+    if [ "$PUSH_ALL" = true ]; then
+      # Discover packages containing .clasp.json
+      REPOS_DIR="/Users/mitchgarner/source/repos/ESR-Biz_Qops"
+      folders=()
+      for d in "$REPOS_DIR"/*/; do
+        if [ -f "${d}.clasp.json" ]; then
+          name=$(basename "$d")
+          folders+=("$name")
+        fi
+      done
+
+      if [ ${#folders[@]} -eq 0 ]; then
+        log_error "No initialized Google Apps Script projects found in this repository."
+      fi
+
+      success_count=0
+      fail_count=0
+      failed_folders=()
+      skipped_folders=()
+
+      for folder in "${folders[@]}"; do
+        if is_excluded "$folder" "$EXCLUDE"; then
+          log_info "Skipping excluded package '$folder'..."
+          skipped_folders+=("$folder")
+          continue
+        fi
+
+        log_banner
+        log_info "Pushing local modifications for package: $folder"
+        TARGET_DIR="$REPOS_DIR/$folder"
+        ensure_claspignore "$TARGET_DIR"
+
+        push_output=$(mktemp)
+        (
+          cd "$TARGET_DIR" || exit 1
+          npx @google/clasp push 2>&1 | tee "$push_output"
+          exit ${PIPESTATUS[0]}
+        )
+        push_status=$?
+
+        if [ $push_status -ne 0 ]; then
+          if grep -qE '"error":"invalid_grant"|invalid_rapt|reauth|Authentication|Authorization|login' "$push_output"; then
+            rm -f "$push_output"
+            log_auth_failure
+          fi
+        fi
+        rm -f "$push_output"
+
+        if [ $push_status -eq 0 ]; then
+          log_success "Pushed code successfully for $folder!"
+          success_count=$((success_count + 1))
+        else
+          log_failure "Failed to push files for $folder."
+          fail_count=$((fail_count + 1))
+          failed_folders+=("$folder")
+        fi
+      done
+
+      # Push Summary
+      log_banner
+      log_info "Push Summary:"
+      log_success "Successfully pushed: $success_count package(s)"
+      if [ ${#skipped_folders[@]} -gt 0 ]; then
+        log_info "Skipped (excluded): ${skipped_folders[*]}"
+      fi
+      if [ $fail_count -gt 0 ]; then
+        log_warn "Failed to push: ${failed_folders[*]}"
+        exit 1
+      else
+        log_success "All selected packages pushed successfully!"
+      fi
+
+    else
+      # Single folder push
+      TARGET_DIR="/Users/mitchgarner/source/repos/ESR-Biz_Qops/$FOLDER"
+      CLASP_CONFIG="$TARGET_DIR/.clasp.json"
+
+      if [ ! -f "$CLASP_CONFIG" ]; then
+        log_error "Project not initialized in '$FOLDER'. Run './bzq pull $FOLDER <script-id>' first."
+      fi
+
+      ensure_claspignore "$TARGET_DIR"
+
+      push_output=$(mktemp)
+      (
+        cd "$TARGET_DIR" || log_error "Failed to access directory $TARGET_DIR"
+        if [ "$WATCH" = true ]; then
+          log_info "Watching local files for automatic pushes to Google Apps Script..."
+          npx @google/clasp push --watch
+        else
+          log_info "Pushing local modifications to Google Apps Script..."
+          npx @google/clasp push 2>&1 | tee "$push_output"
+          exit ${PIPESTATUS[0]}
+        fi
+      )
+      push_status=$?
+
+      if [ "$WATCH" = false ]; then
+        if [ $push_status -ne 0 ]; then
+          if grep -qE '"error":"invalid_grant"|invalid_rapt|reauth|Authentication|Authorization|login' "$push_output"; then
+            rm -f "$push_output"
+            log_auth_failure
+          fi
+          rm -f "$push_output"
+          log_error "Failed to push files."
+        else
+          rm -f "$push_output"
+          log_success "Pushed code successfully to Google Sheets!"
+        fi
+      fi
     fi
     ;;
 
