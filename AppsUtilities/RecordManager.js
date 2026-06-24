@@ -4,15 +4,7 @@
  */
 class RecordManager {
   /**
-   * Retrieves the object configuration, spreadsheet, and sheet by sheet name.
-   * @param {string} sheetName - The name of the datasheet
-   * @returns {Object} Config, spreadsheet, and sheet instances
-   * @private
-   */
-  /**
    * Retrieves the object configuration, spreadsheet, and sheet by sheet name or object name.
-   * @param {string} sheetNameOrObjectName - The name of the datasheet or the object
-   * @returns {Object} Config, spreadsheet, and sheet instances
    * @private
    */
   static getSheetAndConfig_(sheetNameOrObjectName) {
@@ -35,29 +27,26 @@ class RecordManager {
 
   /**
    * Finalizes a newly created record row by applying formatting and validation rules.
-   * @param {SpreadsheetApp.Spreadsheet} spreadsheet - The parent spreadsheet
-   * @param {SpreadsheetApp.Sheet} sheet - The target sheet
-   * @param {number} row - The row index of the new record
-   * @param {Object} objConfig - The object configuration record
    * @private
    */
   static finalizeNewRecordRow_(spreadsheet, sheet, row, objConfig) {
     const sheetName = sheet.getName();
-    // Apply row formatting
     FormatManager.formatRow(sheet, row, objConfig);
     
-    // Apply validation rules immediately, ignoring empty primary fields check
     const lastCol = sheet.getLastColumn() || 1;
     const validationRange = sheet.getRange(row, 1, 1, lastCol);
-    ValidationContext.processRecordEdit(spreadsheet, sheetName, validationRange, objConfig, true);
+    ValidationContext.processRecordEdit({
+      spreadsheet,
+      sheetName,
+      range: validationRange,
+      objConfig,
+      forceValidation: true
+    });
   }
 
   /**
    * Call this method when a new record is being entered from the spreadsheet grid.
    * Coordinates sequence retrieval, styling, and validation triggers.
-   * @param {string} sheetName - Name of the datasheet where the new record is created
-   * @param {boolean} isForForm - Set to true if called from Forms Engine to bypass sheet insertion
-   * @returns {string|null} The next sequence ID if isForForm is true, otherwise null
    */
   static newRecord(sheetName, isForForm = false) {
     const { objConfig, spreadsheet, sheet } = this.getSheetAndConfig_(sheetName);
@@ -79,17 +68,11 @@ class RecordManager {
 
   /**
    * Adds a new record to the sheet associated with the given object type.
-   * Resolves the AUTOID sequence value, appends the record, formats the new row,
-   * and runs the validation manager.
-   * @param {string} objectType - Name of the object type (correlates to the datasheet name or object name)
-   * @param {Object} recordData - The object representing the fields and values of the record to add
-   * @returns {string} Success confirmation message
    */
   static addRecord(objectType, recordData) {
     const { objConfig, spreadsheet, sheet } = this.getSheetAndConfig_(objectType);
     const datasheetName = objConfig["Datasheet"];
 
-    // Call SequenceManager to generate the next sequence value if the ID field is empty
     const idFieldName = objConfig["Id Field Name"];
     if (idFieldName && (!recordData[idFieldName] || recordData[idFieldName] === "")) {
       recordData[idFieldName] = SequenceManager.processSequenceForObject(datasheetName);
@@ -98,17 +81,13 @@ class RecordManager {
     const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
     const newRow = headers.map(header => recordData[header] || "");
     
-    // Append the row to the sheet
     sheet.appendRow(newRow);
-    const lastRow = sheet.getLastRow();
-
-    this.finalizeNewRecordRow_(spreadsheet, sheet, lastRow, objConfig);
+    this.finalizeNewRecordRow_(spreadsheet, sheet, sheet.getLastRow(), objConfig);
     return "Success!";
   }
 
   /**
    * Processes record edits on watched sheets, routing them to the validation context.
-   * @param {GoogleAppsScript.Events.SheetsOnEdit} e - The onEdit event object
    */
   static processRecordEdit(e) {
     if (!e || !e.range) return;
@@ -117,26 +96,19 @@ class RecordManager {
     const sheetName = sheet.getName();
     const spreadsheet = e.source;
     
-    // Retrieve object configuration by datasheet name
     const objConfig = ConfigurationManager.getObjectConfiguration(sheetName, 'datasheetName');
     if (!objConfig) return;
     
-    // Process row formatting and auto-populate missing IDs
     this.processEditRows_(sheet, range, objConfig);
     
-    // Check if validation is enabled
     const enabled = String(objConfig["Enabled For Validation"]).toUpperCase() === 'TRUE';
     if (!enabled) return;
     
-    // Route to ValidationContext
-    ValidationContext.processRecordEdit(spreadsheet, sheetName, range, objConfig);
+    ValidationContext.processRecordEdit({ spreadsheet, sheetName, range, objConfig });
   }
 
   /**
    * Processes row-level edits (formatting and ID auto-population) for the edited range.
-   * @param {SpreadsheetApp.Sheet} sheet - The target sheet
-   * @param {SpreadsheetApp.Range} range - The edited range
-   * @param {Object} objConfig - The datasheet object configuration
    * @private
    */
   static processEditRows_(sheet, range, objConfig) {
@@ -146,39 +118,31 @@ class RecordManager {
     
     for (let r = 0; r < numRows; r++) {
       const row = startRow + r;
-      if (row <= headerNumber) continue;
-      
-      // Apply row formatting
-      FormatManager.formatRow(sheet, row, objConfig);
-      
-      // Auto-populate ID if needed
-      this.autoPopulateIdIfNeeded_(sheet, row, objConfig);
+      if (row > headerNumber) {
+        FormatManager.formatRow(sheet, row, objConfig);
+        this.autoPopulateIdIfNeeded_(sheet, row, objConfig);
+      }
     }
   }
 
   /**
    * Auto-populates the Sequence ID for a given row if it is missing and the row contains other data.
-   * @param {SpreadsheetApp.Sheet} sheet - The target sheet
-   * @param {number} row - The row index to process
-   * @param {Object} objConfig - The datasheet object configuration
    * @private
    */
   static autoPopulateIdIfNeeded_(sheet, row, objConfig) {
     const idCell = this.getIdCellRange_(sheet, row, objConfig);
     if (!idCell) return;
     
-    const idVal = this.getIdCellValue_(idCell);
+    const idVal = idCell.getValue();
     if (idVal === "" || idVal === null || idVal === undefined) {
       const lastCol = sheet.getLastColumn() || 1;
       const isRowEmpty = this.checkAllRowValuesEmpty_(sheet, row, lastCol);
       if (!isRowEmpty) {
         try {
           const newRecordNumber = SequenceManager.processSequenceForObject(sheet.getName());
-          if (newRecordNumber) {
-            idCell.setValue(newRecordNumber);
-          }
+          if (newRecordNumber) idCell.setValue(newRecordNumber);
         } catch (seqErr) {
-          LoggingManager.LogError_(`Failed to auto-generate sequence ID for row ${row} on sheet ${sheet.getName()}: ` + seqErr.message);
+          LoggingManager.LogError_(`Failed to auto-generate sequence ID for row ${row}: ` + seqErr.message);
         }
       }
     }
@@ -186,25 +150,17 @@ class RecordManager {
 
   /**
    * Retrieves the range (single cell) of the ID field for a specific row in a sheet.
-   * @param {SpreadsheetApp.Sheet} sheet - The target sheet
-   * @param {number} row - The row index
-   * @param {Object} objConfig - The object configuration record
-   * @returns {SpreadsheetApp.Range|null} The single cell range for the ID, or null if ID column cannot be resolved
    * @private
    */
   static getIdCellRange_(sheet, row, objConfig) {
-    const spreadsheetId = objConfig["Spreadsheet Id"];
     const idFieldName = objConfig["Id Field Name"];
-    const headerNumber = Number(objConfig["Header Number"]) || 1;
-    
     if (!idFieldName) return null;
     
     try {
       const idColumnIndex = GlobalUtilities.getColumnIndexOnSheet(
-        spreadsheetId,
-        sheet.getName(),
+        { spreadsheetId: objConfig["Spreadsheet Id"], sheetName: sheet.getName() },
         idFieldName,
-        headerNumber
+        Number(objConfig["Header Number"]) || 1
       );
       if (idColumnIndex !== -1) {
         return sheet.getRange(row, idColumnIndex);
@@ -216,22 +172,7 @@ class RecordManager {
   }
 
   /**
-   * Retrieves the ID value from a given ID cell range.
-   * @param {SpreadsheetApp.Range} idCellRange - The single cell range for the ID field
-   * @returns {any} The ID value, or undefined if range is null
-   * @private
-   */
-  static getIdCellValue_(idCellRange) {
-    if (!idCellRange) return undefined;
-    return idCellRange.getValue();
-  }
-
-  /**
    * Helper to check if all cell values in a given row are empty.
-   * @param {SpreadsheetApp.Sheet} sheet - The target sheet
-   * @param {number} row - The row index to check
-   * @param {number} lastCol - The last column index of the sheet
-   * @returns {boolean} True if all cells in the row are empty, false otherwise
    * @private
    */
   static checkAllRowValuesEmpty_(sheet, row, lastCol) {
@@ -248,7 +189,8 @@ class RecordManager {
 
 /**
  * For the provided sheetName (plural of object) generates the next sequence value and adds it to the requested sheet.
- * @param {string} sheetName - Name of the data sheet that a user is creating a new record in.
+ * @deprecated Deprecated on 2026-06-24. Will be obsolete and safe to remove on or after 2026-12-24.
+ * Use RecordManager.newRecord instead.
  */
 function newRecord(sheetName) {
   RecordManager.newRecord(sheetName);
@@ -265,7 +207,8 @@ function requestRecordIdForForm(sheetName) {
 
 /**
  * Processes record edits on watched sheets, routing them to the validation context.
- * @param {GoogleAppsScript.Events.SheetsOnEdit} e - The onEdit event object
+ * @deprecated Deprecated on 2026-06-24. Will be obsolete and safe to remove on or after 2026-12-24.
+ * Use RecordManager.processRecordEdit directly.
  */
 function recordManager_processRecordEdit(e) {
   RecordManager.processRecordEdit(e);

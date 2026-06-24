@@ -13,16 +13,11 @@ class FormsEngine {
     const formName = this.getFormName_(objectName);
     AppsUtilities.loggingManager_LogDebugMessage(`Form name: ${formName}`);
     
-    // Get Field Definitions
-    const formFields = this.getFormDefinition_(formName, objectName);
-    
-    // Prepare HTML
     const template = HtmlService.createTemplateFromFile('FormTemplate');
-    template.fields = formFields;
+    template.fields = this.getFormDefinition_(formName, objectName);
     template.objectName = objectName;
     template.formName = formName;
     
-    // Evaluate once to avoid redundant execution
     const evaluatedTemplate = template.evaluate()
         .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL)
         .setTitle(formName);
@@ -42,7 +37,6 @@ class FormsEngine {
                                     .getSheetByName(FormsEngineGlobalProperties.formsListSheetName_)
                                     .getDataRange()
                                     .getValues();
-    // Find the Form Definition
     let formName = "";
     let isEnabled = false;
     for (let i = 1; i < formsList.length; i++) {
@@ -58,6 +52,23 @@ class FormsEngine {
   }
 
   /**
+   * Resolves options list for a LOOKUP field.
+   * @private
+   */
+  static resolveLookupField_(type, refObject, refDropdown, field, objectName) {
+    if (refObject) {
+      AppsUtilities.loggingManager_LogDebugMessage(`Looking for object values for ${refObject}`);
+      return AppsUtilities.validationContext_getLookupRangeValuesForForm(refObject);
+    }
+    if (refDropdown) {
+      AppsUtilities.loggingManager_LogDebugMessage(`Looking for global values for ${refDropdown}`);
+      return AppsUtilities.validationContext_GetGlobalDropdown(refDropdown);
+    }
+    AppsUtilities.loggingManager_LogDebugMessage(`Looking for static values for ${field}`);
+    return AppsUtilities.validationContext_getObjectStaticDropdown(objectName, field);
+  }
+
+  /**
    * Retrieves the entire form definition from its page in the workbook.
    * @param {string} formName - The name of the form as listed in the Forms sheet
    * @param {string} objectName - The name of the object correlating with the form
@@ -65,32 +76,16 @@ class FormsEngine {
    */
   static getFormDefinition_(formName, objectName) {
     AppsUtilities.loggingManager_LogDebugMessage(`Getting definition for form ${formName} for object ${objectName}`);
-    const formsWorkbookId = FormsEngineGlobalProperties.formsEngineWorkbookId_;
-    const formsWorkbook = SpreadsheetApp.openById(formsWorkbookId);
-    const formSheet = formsWorkbook.getSheetByName(formName);
-    const formDataRange = formSheet.getDataRange();
-    const defData = formDataRange.getValues();
+    const defData = SpreadsheetApp.openById(FormsEngineGlobalProperties.formsEngineWorkbookId_)
+                                  .getSheetByName(formName)
+                                  .getDataRange()
+                                  .getValues();
     const fields = [];
-    
     for (let j = 1; j < defData.length; j++) {
-      let [field, displayName, type, refObject, refDropdown, validation] = defData[j];
-      let config = { field, displayName, type, validation, options: [] };
-      if (type === "AUTOID") {
-        // AUTOID field values are generated upon insertion inside RecordManager
-      } else if (type === "LOOKUP") {
-        if (refObject) {
-          // Field is referencing a dynamic record list
-          AppsUtilities.loggingManager_LogDebugMessage(`Looking for object values for ${refObject}`);
-          config.options = AppsUtilities.validationContext_getLookupRangeValuesForForm(refObject);
-        } else if (refDropdown) {
-          // Field references an explicit global dropdown of static values held in configuration
-          AppsUtilities.loggingManager_LogDebugMessage(`Looking for global values for ${refDropdown}`);
-          config.options = AppsUtilities.validationContext_GetGlobalDropdown(refDropdown);
-        } else {
-          // Field is a static dropdown for just this object
-          AppsUtilities.loggingManager_LogDebugMessage(`Looking for static values for ${field}`);
-          config.options = AppsUtilities.validationContext_getObjectStaticDropdown(objectName, field);
-        }
+      const [field, displayName, type, refObject, refDropdown, validation] = defData[j];
+      const config = { field, displayName, type, validation, options: [] };
+      if (type === "LOOKUP") {
+        config.options = this.resolveLookupField_(type, refObject, refDropdown, field, objectName);
       }
       fields.push(config);
     }
@@ -118,7 +113,6 @@ class FormsEngine {
     const menu = ui.createMenu('Entry Forms');
     const globalScope = globalThis;
     
-    // Check if FormsEngine is running as a library
     const isLibrary = (typeof globalScope["formsEngine_buildEntryFormsMenu"] !== 'function');
     const prefix = isLibrary ? "FormsEngine." : "";
     AppsUtilities.loggingManager_LogDebugMessage("FormsEngine: isLibrary=" + isLibrary + ", prefix=" + prefix);
@@ -147,6 +141,7 @@ function formsEngine_include(filename, templateData = null) {
 
 /**
  * Used for testing during development.
+ * @deprecated Deprecated on 2026-06-24. Will be obsolete and safe to remove on or after 2026-12-24.
  */
 function formsEngine_adHocTest() {
   AppsUtilities.loggingManager_LogDebugMessage(FormsEngine.getFormDefinition_("Create test object", "Test Object"));
@@ -204,6 +199,7 @@ function formsEngine_openActiveSheetForm() {
   const activeSheetName = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet().getName();
   formsEngine_doGetForm(activeSheetName);
 }
+
 /**
  * Global wrapper to show the Form Picker in the sidebar.
  */
@@ -222,17 +218,13 @@ function formsEngine_showFormPicker() {
  */
 function formsEngine_getEnabledFormsList() {
   try {
-    const workbookId = FormsEngineGlobalProperties.formsEngineWorkbookId_;
-    const sheetName = FormsEngineGlobalProperties.formsListSheetName_;
-    const formsList = SpreadsheetApp.openById(workbookId)
-                                    .getSheetByName(sheetName)
+    const formsList = SpreadsheetApp.openById(FormsEngineGlobalProperties.formsEngineWorkbookId_)
+                                    .getSheetByName(FormsEngineGlobalProperties.formsListSheetName_)
                                     .getDataRange()
                                     .getValues();
     const enabledForms = [];
     for (let i = 1; i < formsList.length; i++) {
-      const objectName = formsList[i][2];
-      const formName = formsList[i][3];
-      const isEnabled = formsList[i][4];
+      const [,, objectName, formName, isEnabled] = formsList[i];
       if (isEnabled && objectName && formName) {
         enabledForms.push({ objectName, formName });
       }

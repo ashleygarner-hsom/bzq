@@ -3,6 +3,22 @@
  */
 class FormatManager {
   /**
+   * Helper to retrieve and parse a saved format configuration.
+   * @private
+   */
+  static getFormatObj_(formatKey) {
+    try {
+      const formatStr = ConfigurationManager.getConfigValue(formatKey);
+      if (formatStr) {
+        return JSON.parse(formatStr);
+      }
+    } catch (e) {
+      LoggingManager.LogError_(`Failed to parse formatting for ${formatKey}: ` + e.message);
+    }
+    return null;
+  }
+
+  /**
    * Formats a row in a datasheet using the stored header or record formatting.
    * @param {SpreadsheetApp.Sheet} sheet - The target sheet
    * @param {number} row - The row index to format
@@ -12,34 +28,16 @@ class FormatManager {
     if (!sheet || !objConfig) return;
     
     const headerNumber = Number(objConfig["Header Number"]) || 1;
-    if (row < headerNumber) return; // Ignore rows above the header
+    if (row < headerNumber) return;
     
-    let formatKey = null;
-    if (row === headerNumber) {
-      formatKey = "HEADER_FORMAT";
-    } else if (row > headerNumber) {
-      formatKey = "RECORD_FORMAT";
-    }
-    
+    const formatKey = row === headerNumber ? "HEADER_FORMAT" : (row > headerNumber ? "RECORD_FORMAT" : null);
     if (!formatKey) return;
     
-    let formatObj = null;
-    try {
-      const formatStr = ConfigurationManager.getConfigValue(formatKey);
-      if (formatStr) {
-        formatObj = JSON.parse(formatStr);
-      }
-    } catch (e) {
-      LoggingManager.LogError_(`Failed to parse formatting for ${formatKey}: ` + e.message);
-      return;
-    }
-    
+    const formatObj = this.getFormatObj_(formatKey);
     if (!formatObj) return;
     
     const lastCol = sheet.getLastColumn() || 1;
-    const range = sheet.getRange(row, 1, 1, lastCol);
-    
-    this.applyFormatToRange_(range, formatObj);
+    this.applyFormatToRange_(sheet.getRange(row, 1, 1, lastCol), formatObj);
   }
   
   /**
@@ -89,10 +87,9 @@ class FormatManager {
   static applyHeaderFormat(range) {
     const formatStr = ConfigurationManager.getConfigValue("HEADER_FORMAT");
     if (!formatStr) {
-      throw new Error("Header format has not been saved yet. Please set the format first using 'Set header format' under the Admin -> Formatting submenu.");
+      throw new Error("Header format has not been saved yet. Please set the format first.");
     }
-    const formatObj = JSON.parse(formatStr);
-    this.applyFormatToRange_(range, formatObj);
+    this.applyFormatToRange_(range, JSON.parse(formatStr));
   }
 
   /**
@@ -102,19 +99,16 @@ class FormatManager {
   static applyRecordFormat(range) {
     const formatStr = ConfigurationManager.getConfigValue("RECORD_FORMAT");
     if (!formatStr) {
-      throw new Error("Record format has not been saved yet. Please set the format first using 'Set record format' under the Admin -> Formatting submenu.");
+      throw new Error("Record format has not been saved yet. Please set the format first.");
     }
-    const formatObj = JSON.parse(formatStr);
-    this.applyFormatToRange_(range, formatObj);
+    this.applyFormatToRange_(range, JSON.parse(formatStr));
   }
 
   /**
-   * Applies formatting options to a spreadsheet range.
-   * @param {SpreadsheetApp.Range} range - The spreadsheet range to format
-   * @param {Object} formatObj - The formatting properties object
+   * Applies non-border text and background formatting options to a spreadsheet range.
    * @private
    */
-  static applyFormatToRange_(range, formatObj) {
+  static applyBasicStyles_(range, formatObj) {
     if (formatObj.background !== undefined) range.setBackground(formatObj.background);
     if (formatObj.fontColor !== undefined) range.setFontColor(formatObj.fontColor);
     if (formatObj.fontFamily !== undefined) range.setFontFamily(formatObj.fontFamily);
@@ -124,48 +118,84 @@ class FormatManager {
     if (formatObj.fontLine !== undefined) range.setFontLine(formatObj.fontLine);
     if (formatObj.horizontalAlignment !== undefined) range.setHorizontalAlignment(formatObj.horizontalAlignment);
     if (formatObj.verticalAlignment !== undefined) range.setVerticalAlignment(formatObj.verticalAlignment);
+  }
+
+  /**
+   * Helper to set a specific border side on a range.
+   * @private
+   */
+  static applySideBorder_(range, sideName, hasSide, sideConfig) {
+    const top = sideName === 'top' ? hasSide : null;
+    const left = sideName === 'left' ? hasSide : null;
+    const bottom = sideName === 'bottom' ? hasSide : null;
+    const right = sideName === 'right' ? hasSide : null;
     
-    // Apply borders if configured
-    if (formatObj.borders) {
-      const b = formatObj.borders;
-      
-      const applySide = (sideName, hasSide, sideConfig) => {
-        const top = sideName === 'top' ? hasSide : null;
-        const left = sideName === 'left' ? hasSide : null;
-        const bottom = sideName === 'bottom' ? hasSide : null;
-        const right = sideName === 'right' ? hasSide : null;
-        
-        let color = null;
-        let style = null;
-        if (hasSide && sideConfig) {
-          color = sideConfig.color || null;
-          if (sideConfig.style) {
-            const styleName = sideConfig.style.toUpperCase();
-            style = SpreadsheetApp.BorderStyle[styleName] || null;
-          }
-        }
-        range.setBorder(top, left, bottom, right, null, null, color, style);
-      };
-      
-      applySide('top', !!b.top, b.top);
-      applySide('bottom', !!b.bottom, b.bottom);
-      applySide('left', !!b.left, b.left);
-      applySide('right', !!b.right, b.right);
-      
-      // Apply vertical borders if left or right borders are present
-      const hasVertical = !!b.left || !!b.right;
-      const verticalConfig = b.left || b.right;
-      let verticalColor = null;
-      let verticalStyle = null;
-      if (hasVertical && verticalConfig) {
-        verticalColor = verticalConfig.color || null;
-        if (verticalConfig.style) {
-          const styleName = verticalConfig.style.toUpperCase();
-          verticalStyle = SpreadsheetApp.BorderStyle[styleName] || null;
-        }
+    let color = null;
+    let style = null;
+    if (hasSide && sideConfig) {
+      color = sideConfig.color || null;
+      if (sideConfig.style) {
+        style = SpreadsheetApp.BorderStyle[sideConfig.style.toUpperCase()] || null;
       }
-      range.setBorder(null, null, null, null, hasVertical, null, verticalColor, verticalStyle);
     }
+    range.setBorder(top, left, bottom, right, null, null, color, style);
+  }
+
+  /**
+   * Orchestrates the border rendering process.
+   * @private
+   */
+  static applyBorders_(range, borders) {
+    this.applySideBorder_(range, 'top', !!borders.top, borders.top);
+    this.applySideBorder_(range, 'bottom', !!borders.bottom, borders.bottom);
+    this.applySideBorder_(range, 'left', !!borders.left, borders.left);
+    this.applySideBorder_(range, 'right', !!borders.right, borders.right);
+    
+    const hasVertical = !!borders.left || !!borders.right;
+    const verticalConfig = borders.left || borders.right;
+    let color = null;
+    let style = null;
+    if (hasVertical && verticalConfig) {
+      color = verticalConfig.color || null;
+      if (verticalConfig.style) {
+        style = SpreadsheetApp.BorderStyle[verticalConfig.style.toUpperCase()] || null;
+      }
+    }
+    range.setBorder(null, null, null, null, hasVertical, null, color, style);
+  }
+
+  /**
+   * Applies formatting options to a spreadsheet range.
+   * @param {SpreadsheetApp.Range} range - The spreadsheet range to format
+   * @param {Object} formatObj - The formatting properties object
+   * @private
+   */
+  static applyFormatToRange_(range, formatObj) {
+    this.applyBasicStyles_(range, formatObj);
+    if (formatObj.borders) {
+      this.applyBorders_(range, formatObj.borders);
+    }
+  }
+
+  /**
+   * Formats a single border side structure for serialization.
+   * @private
+   */
+  static serializeBorderSide_(sideObj) {
+    if (!sideObj) return null;
+    let colorStr = null;
+    let styleStr = null;
+    try {
+      const color = sideObj.getColor();
+      if (color) colorStr = color.asRgbColor().asHexString();
+    } catch (e) {}
+    try {
+      const style = sideObj.getBorderStyle();
+      if (style) styleStr = String(style);
+    } catch (e) {}
+    
+    if (!styleStr || styleStr === 'NONE') return null;
+    return { style: styleStr, color: colorStr };
   }
 
   /**
@@ -179,38 +209,12 @@ class FormatManager {
       const border = cell.getBorder();
       if (!border) return null;
       
-      const serializeSide = (sideObj) => {
-        if (!sideObj) return null;
-        let colorStr = null;
-        let styleStr = null;
-        try {
-          const color = sideObj.getColor();
-          if (color) {
-            colorStr = color.asRgbColor().asHexString();
-          }
-        } catch (e) {}
-        try {
-          const style = sideObj.getBorderStyle();
-          if (style) {
-            styleStr = String(style);
-          }
-        } catch (e) {}
-        
-        if (!styleStr || styleStr === 'NONE') return null;
-        
-        return {
-          style: styleStr,
-          color: colorStr
-        };
-      };
-      
-      const top = serializeSide(border.getTop());
-      const bottom = serializeSide(border.getBottom());
-      const left = serializeSide(border.getLeft());
-      const right = serializeSide(border.getRight());
+      const top = this.serializeBorderSide_(border.getTop());
+      const bottom = this.serializeBorderSide_(border.getBottom());
+      const left = this.serializeBorderSide_(border.getLeft());
+      const right = this.serializeBorderSide_(border.getRight());
       
       if (!top && !bottom && !left && !right) return null;
-      
       return { top, bottom, left, right };
     } catch (e) {
       return null;

@@ -59,18 +59,15 @@ check_dependencies() {
     log_error "Node.js is not installed. Node.js is required to run clasp CLI."
   fi
 
-  # clasp has known fetch issues ('Premature close') on Node.js v22+
-  local current_version
-  current_version=$(node -v 2>/dev/null | tr -d 'v')
-  local major_version
-  major_version=$(echo "$current_version" | cut -d'.' -f1)
+  local current_version=$(node -v 2>/dev/null | tr -d 'v')
+  local major_version=$(echo "$current_version" | cut -d'.' -f1)
 
   if [ -n "$major_version" ] && [ "$major_version" -ge 22 ]; then
     local brew_node20_path="/opt/homebrew/opt/node@20/bin"
     if [ -d "$brew_node20_path" ]; then
       export PATH="$brew_node20_path:$PATH"
     else
-      log_warn "Node.js version v$current_version detected (v22+). clasp may encounter connection issues ('Premature close')."
+      log_warn "Node.js v$current_version detected (v22+). clasp may fail with 'Premature close'."
       log_warn "If clasp fails, run: brew install node@20"
     fi
   fi
@@ -78,7 +75,6 @@ check_dependencies() {
 
 # Check if authenticated with clasp
 check_auth() {
-  # clasp has no silent "check auth" command, but we can verify if ~/.clasprc.json exists
   if [ ! -f "$HOME/.clasprc.json" ]; then
     log_warn "No clasp credentials found in your home directory (~/.clasprc.json)."
     log_warn "Please run './bzq login' first to authenticate with Google."
@@ -89,28 +85,14 @@ check_auth() {
 # Find the latest deployed version number for a given script
 get_latest_deployment_version() {
   local target_dir="$1"
+  [ ! -d "$target_dir" ] && log_error "Target directory '$target_dir' does not exist."
   
-  if [ ! -d "$target_dir" ]; then
-    log_error "Target directory '$target_dir' does not exist."
-  fi
-  
-  # Go to directory to run clasp
   (
     cd "$target_dir" || log_error "Failed to enter directory '$target_dir'"
+    local out=$(npx @google/clasp deployments 2>&1)
+    [ $? -ne 0 ] && log_error "Failed to retrieve deployments from clasp:\n$out"
     
-    # Run deployments and parse the output
-    # Sample line: - AKfycbwEXAMPLE12345 @1 - Initial version
-    # We want the highest version number
-    local deployments_output
-    deployments_output=$(npx @google/clasp deployments 2>&1)
-    
-    if [[ $? -ne 0 ]]; then
-      log_error "Failed to retrieve deployments from clasp:\n$deployments_output"
-    fi
-    
-    local version
-    version=$(echo "$deployments_output" | grep -o "@[0-9]\+" | tail -n 1 | tr -d "@")
-    
+    local version=$(echo "$out" | grep -o "@[0-9]\+" | tail -n 1 | tr -d "@")
     if [ -z "$version" ]; then
       log_warn "No active numeric deployments found. Defaulting to HEAD version."
       echo "HEAD"
@@ -118,6 +100,20 @@ get_latest_deployment_version() {
       echo "$version"
     fi
   )
+}
+
+# Fallback helper to write default .claspignore rules
+write_default_claspignore_() {
+  cat << 'EOF' > "$1"
+# Ignore all local-only files
+**/*.md
+**/*.sh
+.git/
+node_modules/
+BZQ-cli/
+bzq
+.claspignore
+EOF
 }
 
 # Ensure .claspignore exists in the target folder
@@ -131,17 +127,7 @@ ensure_claspignore() {
     if [ -f "$template_path" ]; then
       cp "$template_path" "$claspignore_path"
     else
-      # Fallback inline creation
-      cat << 'EOF' > "$claspignore_path"
-# Ignore all local-only files
-**/*.md
-**/*.sh
-.git/
-node_modules/
-BZQ-cli/
-bzq
-.claspignore
-EOF
+      write_default_claspignore_ "$claspignore_path"
     fi
     log_success "Created '.claspignore' successfully."
   fi

@@ -44,8 +44,7 @@ class AppUtilitiesGlobalProperties {
 }
 /**
  * Tests the AppUtilitiesGlobalProperties class
- * In most productioin cases this method should only return the name of the module, e.g. "Apps Utilities"
- * However, for purposes of development and validation, it is a good place to put test code for the class
+ * @deprecated Deprecated on 2026-06-24. Will be obsolete and safe to remove on or after 2026-12-24.
  */
 function testAppUtilitiesGlobalProperties(){
   

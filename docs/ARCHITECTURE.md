@@ -91,3 +91,43 @@ Custom menu items created by `AppsUtilities.onOpen()` resolve in the container's
 4. **Deploy configuration & run setup:**
    - Define the sheet's business object and header configurations in the `__ObjectConfiguration` sheet of the core `AppsUtilities` configuration spreadsheet.
    - Inside the new workbook, select `ManageBusiness` -> `Admin` -> `Initialize Application` to register the installable triggers.
+
+---
+
+## 🧹 Code Cleanliness & Constraints
+
+To maintain lightweight, highly scannable, and maintainable extensions, the codebase adheres to the following constraints (defined in [agent.md](file:///Users/mitchgarner/source/repos/ESR-Biz_Qops/agent.md)):
+* **Function Length**: Hard limit of 20 lines of code per function.
+* **Argument Cap**: Maximum of 3 positional parameters. If a function requires more than 3 parameters, they must be encapsulated into a single configuration/parameter object.
+* **Line Length**: Maximum of 120 characters per line.
+* **Purity**: Functions should be pure and avoid mutating global states or input arguments wherever possible.
+
+### Parameter Object Pattern
+When functions require multiple inputs (e.g. `ValidationContext.processRecordEdit`), they accept a single configuration object:
+```javascript
+// Example parameter object pattern
+static processRecordEdit(params) {
+  const { spreadsheet, sheetName, range, objConfig, forceValidation } = params;
+  // ...
+}
+```
+
+---
+
+## 🛑 Deprecation Strategy
+
+Unused global wrappers, legacy trigger entrypoints, and test functions are marked with JSDoc `@deprecated` annotations. 
+- **Format**: Each deprecated function includes the date of deprecation and the earliest date it is safe to remove (no sooner than 6 months after deprecation).
+- **Removal**: Human developers and AI assistants (like Gemini) can safely prune these deprecated functions on or after the safe removal date without risking breaking changes.
+
+Example:
+```javascript
+/**
+ * Global function to process validation on edit events.
+ * @deprecated Deprecated on 2026-06-24. Will be obsolete and safe to remove on or after 2026-12-24.
+ * Use RecordManager.processRecordEdit directly.
+ */
+function validationContext_processRecordEdit(e) {
+  RecordManager.processRecordEdit(e);
+}
+```
