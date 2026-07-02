@@ -23,10 +23,12 @@ show_help() {
   echo ""
   echo -e "${BOLD}COMMANDS:${NC}"
   echo -e "  ${BOLD}login${NC}                                 Authenticate clasp with your Google Account."
+  echo -e "  ${BOLD}init <folder> [parent-folder-id]${NC}      Initialize a new script project, optionally in a parent folder."
   echo -e "  ${BOLD}pull <folder> [script-id] [options]${NC}    Sync down / clone files from Google Apps Script."
   echo -e "  ${BOLD}push [<folder> | --all] [options]${NC}     Push local files up to Google Apps Script."
   echo -e "  ${BOLD}deploy <folder> [description]${NC}          Create a new versioned deployment of the project."
   echo -e "  ${BOLD}status <folder>${NC}                        Check local/remote sync status of files."
+  echo -e "  ${BOLD}link-gcp <folder> <project-id>${NC}        Link the script project to a Google Cloud Project."
   echo ""
   echo -e "${BOLD}PULL OPTIONS:${NC}"
   echo -e "  ${BOLD}-d, --latest-deployed${NC}                 Query deployments and pull the latest deployed version."
@@ -393,6 +395,15 @@ case "$COMMAND" in
 
     if [ $? -eq 0 ]; then
       log_success "Deployment created successfully!"
+      if [ "$FOLDER" = "extension_scaffold" ]; then
+        log_banner
+        log_success "DEVELOPER MODE INSTALLATION GUIDE:"
+        log_info "1. Open script in editor: https://script.google.com/d/180Z9oAaNeouz_qF7U-qGL65rckWAb7_AUChQTUPNbB3YdiycLg4Y8ODw/edit"
+        log_info "2. Click 'Deploy' -> 'Test deployments' in top-right toolbar."
+        log_info "3. Under 'BZQ ERP Workspace Extension', click 'Install' for Sheets and Drive."
+        log_info "4. Open or refresh Sheets/Drive; the BZQ icon will appear in the right sidebar!"
+        log_banner
+      fi
     else
       log_error "Failed to create deployment."
     fi
@@ -416,6 +427,24 @@ case "$COMMAND" in
       cd "$TARGET_DIR" || log_error "Failed to access directory $TARGET_DIR"
       npx @google/clasp status
     )
+    ;;
+
+  link-gcp)
+    FOLDER="$1"
+    PROJECT_ID="$2"
+    if [ -z "$FOLDER" ] || [ -z "$PROJECT_ID" ]; then
+      log_error "Usage: ./bzq link-gcp <folder> <gcp-project-id>"
+    fi
+    link_gcp_project "$FOLDER" "$PROJECT_ID"
+    ;;
+
+  init)
+    FOLDER="$1"
+    PARENT_ID="$2"
+    if [ -z "$FOLDER" ]; then
+      log_error "Usage: ./bzq init <folder> [parent-folder-id]"
+    fi
+    init_script_project "$FOLDER" "$PARENT_ID"
     ;;
 
   *)

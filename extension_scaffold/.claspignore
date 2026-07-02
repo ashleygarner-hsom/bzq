@@ -1,0 +1,9 @@
+# Ignore all local-only files
+**/*.md
+**/*.sh
+.git/
+node_modules/
+BZQ-cli/
+bzq
+.claspignore
+GeminiMcpConnector.js

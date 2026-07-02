@@ -132,3 +132,70 @@ ensure_claspignore() {
     log_success "Created '.claspignore' successfully."
   fi
 }
+
+# Link clasp project to GCP project
+link_gcp_project() {
+  local folder="$1"
+  local project_id="$2"
+  local target_dir="/Users/mitchgarner/source/repos/ESR-Biz_Qops/$folder"
+  local clasp_config="$target_dir/.clasp.json"
+
+  if [ ! -f "$clasp_config" ]; then
+    log_error "Project not initialized in '$folder'. Run './bzq pull $folder <script-id>' first."
+  fi
+
+  log_info "Linking Apps Script project in '$folder' to GCP Project ID: $project_id..."
+  node -e "
+    const fs = require('fs');
+    const file = '$clasp_config';
+    const data = JSON.parse(fs.readFileSync(file));
+    data.projectId = '$project_id';
+    fs.writeFileSync(file, JSON.stringify(data, null, 2));
+  "
+
+  if [ $? -eq 0 ]; then
+    log_success "Successfully linked project to GCP!"
+    log_banner
+    log_success "DOMAIN-WIDE MARKETPLACE REGISTRATION QUICK LINK:"
+    log_info "Open this URL to enable and configure the Google Workspace Marketplace SDK:"
+    log_info "  https://console.cloud.google.com/apis/api/workspace-marketplace/overview?project=$project_id"
+    log_banner
+  else
+    log_error "Failed to link GCP project. Ensure the project ID exists and you have access."
+  fi
+}
+
+# Initialize a new script project, optionally in a parent folder ID
+init_script_project() {
+  local folder="$1"
+  local parent_id="$2"
+  local target_dir="/Users/mitchgarner/source/repos/ESR-Biz_Qops/$folder"
+  local clasp_config="$target_dir/.clasp.json"
+
+  if [ -f "$clasp_config" ]; then
+    log_error "Project already initialized in '$folder'. Run './bzq push $folder' or pull instead."
+  fi
+
+  log_info "Initializing stand-alone Apps Script project in '$folder'..."
+  mkdir -p "$target_dir"
+
+  local parent_args=()
+  if [ -n "$parent_id" ]; then
+    log_info "Targeting Shared Drive parent folder ID: $parent_id"
+    parent_args+=("--parentId" "$parent_id")
+  fi
+
+  (
+    cd "$target_dir" || log_error "Failed to access directory $target_dir"
+    PATH="/opt/homebrew/opt/node@20/bin:$PATH" npx @google/clasp create --title "BZQ $folder Extension" --type standalone "${parent_args[@]}"
+  )
+
+  if [ $? -eq 0 ]; then
+    ensure_claspignore "$target_dir"
+    log_success "Project successfully initialized inside '$folder'!"
+  else
+    log_error "Failed to create script project. Check your credentials or parent folder ID."
+  fi
+}
+
+

@@ -41,9 +41,13 @@ graph TD
 | :--- | :--- | :--- | :--- | :--- |
 | **[AppsUtilities](file:///Users/mitchgarner/source/repos/ESR-Biz_Qops/AppsUtilities)** | **Core Library** (Sequencing, formatting, configuration, and cell validation context) | `1KsqYmH746evWxO20E850u_JFcUlRZW-jQsTz5CY7m-UpriQXNa8_xYnY` | `1SyMoGrqy7_JdQ2VbUwsv6ALvMmX9765mKZRJK8pYkew` | *None* |
 | **[FormsEngine](file:///Users/mitchgarner/source/repos/ESR-Biz_Qops/FormsEngine)** | **HTML Forms Renderer** (Creates and handles modal entry forms schemas) | `12KlTGCao0iLOAwB0QaBpn-MWcveFUifSgOQCCJpXRtUPtajUdje8uzSi` | `1nMPXL_ymuZFbN7fZ-3wEieWoZo7SKDfN5PhIi2AbBf8` | `AppsUtilities` |
+| **[extension_scaffold](file:///Users/mitchgarner/source/repos/ESR-Biz_Qops/extension_scaffold)** | **Workspace Add-on Scaffold** (Homepages, card translation UI, auto-registration) | *Standalone* | *None* | `AppsUtilities`, `FormsEngine` |
 | **[SalesManager](file:///Users/mitchgarner/source/repos/ESR-Biz_Qops/SalesManager)** | Spoke Sheet (Manages sales pipeline records) | `1r5-u6Rrlp3rqCzwGUHYojr_-BjQVMs4VF9d0RPCkFKIjg4k_RtJUsvjm` | `19zAfGMSdSvbakvCrv96s7aJXhUsjQ39lp1tJTCY8czA` | `AppsUtilities`, `FormsEngine` |
 | **[ProspectTracker](file:///Users/mitchgarner/source/repos/ESR-Biz_Qops/ProspectTracker)** | Spoke Sheet (Manages prospective sales leads) | `1zhn7oRgGXSw-SqAz-MTf35kFQamFwgVNCP4-5UDoCiw5iQHrikQ5gCqv` | *Spreadsheet Container* | `AppsUtilities`, `FormsEngine` |
 | **[CustomerMasterList](file:///Users/mitchgarner/source/repos/ESR-Biz_Qops/CustomerMasterList)** | Spoke Sheet (Master customer repository) | `18MBkb_PQPStw8rGoecimiLVJQPVaz7oQH31BTnbDDKZLLgWov7coq8Sb` | *Spreadsheet Container* | `AppsUtilities`, `FormsEngine` |
+
+> [!NOTE]
+> For details on the new centralized Workspace Add-on architecture and migration path, refer to the [Workspace Extension Architecture](file:///Users/mitchgarner/source/repos/ESR-Biz_Qops/docs/WORKSPACE_EXTENSION_ARCHITECTURE.md) design document.
 
 ---
 
