@@ -11,13 +11,13 @@ Biz Qops is built around a **Hub-and-Spoke library model**:
 2. **Spoke Sheets (`SalesManager`, `ProspectTracker`, etc.)**: Independent Google Sheets representing specific business objects. They contain thin wrapper scripts (`Triggers.js`) that forward all spreadsheet events and menu actions to the core hubs.
 
 ```mermaid
-graph TD
-    subgraph Core Hubs
+flowchart TD
+    subgraph "Core Hubs"
         AU[AppsUtilities Library]
         FE[FormsEngine Library]
     end
 
-    subgraph Spoke Workbooks
+    subgraph "Spoke Workbooks"
         SM[SalesManager Sheet]
         PT[ProspectTracker Sheet]
         CM[CustomerMasterList Sheet]

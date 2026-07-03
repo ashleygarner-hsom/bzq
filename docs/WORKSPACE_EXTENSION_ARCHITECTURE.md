@@ -1,6 +1,9 @@
 # Google Workspace Add-on Migration Architecture
 
-This document defines the architectural design, migration path, and implementation decisions for transitioning the BZQ (BizChops) ERP platform from container-bound spreadsheet scripts to a centralized **Google Workspace Add-on (GWAO)** deployment model.
+This document defines the architectural design, migration path, and implementation decisions for transitioning the BZQ (BizChops) ERP platform from container-bound spreadsheet scripts to a centralized **Google Workspace Add-on (GWAO)** deployment model. 
+
+* For production deployment strategies and application lifecycle management, see the [Deployment and ALM Guide](file:///Users/mitchgarner/source/repos/ESR-Biz_Qops/docs/DEPLOYMENT_AND_ALM.md).
+* For development pipelines, CI/CD, and Google Workspace Marketplace listings, see the [Release Process and ALM Guide](file:///Users/mitchgarner/source/repos/ESR-Biz_Qops/docs/RELEASE_PROCESS_AND_ALM.md).
 
 ---
 
@@ -11,13 +14,13 @@ Historically, BZQ deployed distinct Apps Script projects bound to individual spr
 The new architecture migrates this model to a **Workspace Add-on** installed once at the domain (tenant) level. Note that BZQ will still support modularly deployed libraries/functionality to individual Apps Script objects within the tenant's Shared Drive, allowing the GWAO to operate as a central coordinator while retaining bound performance optimizations where needed.
 
 ```mermaid
-graph TD
-    subgraph New Workspace Add-on Model
+flowchart TD
+    subgraph "New Workspace Add-on Model"
         GWAO[Central BZQ Workspace Add-on]
         Registry[Central Config Sheet: BZQ_Tenant_Configuration]
     end
 
-    subgraph Client Environments (Shared Drive)
+    subgraph "Client Environments (Shared Drive)"
         SM[SalesManager Spreadsheet]
         PT[ProspectTracker Spreadsheet]
         Dr[Google Drive UI]
@@ -86,7 +89,7 @@ Placing any BZQ assets or configuration sheets into a user's personal My Drive s
 To automate the setup of new spoke spreadsheets without manual user configuration:
 
 ```mermaid
-graph TD
+flowchart TD
     Input[User registers Spoke in Config] --> CheckFile{File exists in Drive?}
     CheckFile -->|No| Clone[Clone from Templates/SpokeTemplate]
     CheckFile -->|Yes| CheckScript{Bound Script Container?}
@@ -112,7 +115,7 @@ graph TD
 Understanding how the Workspace Add-on, container Apps Scripts, and spreadsheets communicate and authenticate:
 
 ```mermaid
-graph TD
+flowchart TD
     User[Active Workspace User] -->|OAuth Authorization| GWAO[Workspace Add-on]
     GWAO -->|Runs under User Credentials| AppsUtilities[AppsUtilities Library]
     AppsUtilities -->|Read/Write Sheets REST API| Sheets[Registered Spreadsheets]

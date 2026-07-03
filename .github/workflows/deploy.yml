@@ -1,0 +1,112 @@
+name: BZQ Platform Apps Script Deploy
+
+on:
+  push:
+    branches:
+      - main
+      - dev
+    tags:
+      - 'v*'
+
+jobs:
+  deploy:
+    name: Deploy to Environment
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js (Node 20 compatibility)
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - name: Install Clasp Globally
+        run: npm install -g @google/clasp
+
+      - name: Determine Target Environment
+        id: env_check
+        run: |
+          REF="${{ github.ref }}"
+          if [[ "$REF" =~ ^refs/tags/v.*-rc.*$ ]]; then
+            echo "ENV=UAT" >> $GITHUB_ENV
+            echo "SCRIPT_ID_UTILITIES=${{ secrets.SCRIPT_ID_UTILITIES_UAT }}" >> $GITHUB_ENV
+            echo "SCRIPT_ID_FORMS=${{ secrets.SCRIPT_ID_FORMS_UAT }}" >> $GITHUB_ENV
+            echo "SCRIPT_ID_SCAFFOLD=${{ secrets.SCRIPT_ID_SCAFFOLD_UAT }}" >> $GITHUB_ENV
+            echo "GCP_PROJECT_ID=${{ vars.GCP_PROJECT_ID_UAT }}" >> $GITHUB_ENV
+            echo "DEPLOY_DESC=UAT Release ${REF#refs/tags/}" >> $GITHUB_ENV
+          elif [[ "$REF" =~ ^refs/tags/v.*$ ]]; then
+            echo "ENV=PROD" >> $GITHUB_ENV
+            echo "SCRIPT_ID_UTILITIES=${{ secrets.SCRIPT_ID_UTILITIES_PROD }}" >> $GITHUB_ENV
+            echo "SCRIPT_ID_FORMS=${{ secrets.SCRIPT_ID_FORMS_PROD }}" >> $GITHUB_ENV
+            echo "SCRIPT_ID_SCAFFOLD=${{ secrets.SCRIPT_ID_SCAFFOLD_PROD }}" >> $GITHUB_ENV
+            echo "GCP_PROJECT_ID=${{ vars.GCP_PROJECT_ID_PROD }}" >> $GITHUB_ENV
+            echo "DEPLOY_DESC=Production Release ${REF#refs/tags/}" >> $GITHUB_ENV
+          elif [[ "$REF" == "refs/heads/main" ]]; then
+            echo "ENV=BETA" >> $GITHUB_ENV
+            echo "SCRIPT_ID_UTILITIES=${{ secrets.SCRIPT_ID_UTILITIES_BETA }}" >> $GITHUB_ENV
+            echo "SCRIPT_ID_FORMS=${{ secrets.SCRIPT_ID_FORMS_BETA }}" >> $GITHUB_ENV
+            echo "SCRIPT_ID_SCAFFOLD=${{ secrets.SCRIPT_ID_SCAFFOLD_BETA }}" >> $GITHUB_ENV
+            echo "GCP_PROJECT_ID=${{ vars.GCP_PROJECT_ID_BETA }}" >> $GITHUB_ENV
+            echo "DEPLOY_DESC=Beta Automated Deployment" >> $GITHUB_ENV
+          elif [[ "$REF" == "refs/heads/dev" ]]; then
+            echo "ENV=ALPHA" >> $GITHUB_ENV
+            echo "SCRIPT_ID_UTILITIES=${{ secrets.SCRIPT_ID_UTILITIES_ALPHA }}" >> $GITHUB_ENV
+            echo "SCRIPT_ID_FORMS=${{ secrets.SCRIPT_ID_FORMS_ALPHA }}" >> $GITHUB_ENV
+            echo "SCRIPT_ID_SCAFFOLD=${{ secrets.SCRIPT_ID_SCAFFOLD_ALPHA }}" >> $GITHUB_ENV
+            echo "GCP_PROJECT_ID=${{ vars.GCP_PROJECT_ID_ALPHA }}" >> $GITHUB_ENV
+            echo "DEPLOY_DESC=Alpha Nightly Canary" >> $GITHUB_ENV
+          else
+            echo "Unsupported deployment ref: $REF"
+            exit 1
+          fi
+
+      - name: Configure clasp Authentication
+        run: |
+          mkdir -p ~/.clasprc.json
+          echo '${{ secrets.CLASPRC_JSON }}' > ~/.clasprc.json
+
+      - name: Build and Push Apps Utilities
+        run: |
+          cd AppsUtilities
+          # Rewrite settings directly
+          node -e "
+            const fs = require('fs');
+            const file = '.clasp.json';
+            const data = fs.existsSync(file) ? JSON.parse(fs.readFileSync(file)) : {};
+            data.scriptId = process.env.SCRIPT_ID_UTILITIES;
+            data.projectId = process.env.GCP_PROJECT_ID;
+            fs.writeFileSync(file, JSON.stringify(data, null, 2));
+          "
+          clasp push -f
+          clasp deploy -d "$DEPLOY_DESC"
+
+      - name: Build and Push Forms Engine
+        run: |
+          cd FormsEngine
+          node -e "
+            const fs = require('fs');
+            const file = '.clasp.json';
+            const data = fs.existsSync(file) ? JSON.parse(fs.readFileSync(file)) : {};
+            data.scriptId = process.env.SCRIPT_ID_FORMS;
+            data.projectId = process.env.GCP_PROJECT_ID;
+            fs.writeFileSync(file, JSON.stringify(data, null, 2));
+          "
+          clasp push -f
+          clasp deploy -d "$DEPLOY_DESC"
+
+      - name: Build and Push Extension Scaffold
+        run: |
+          cd extension_scaffold
+          node -e "
+            const fs = require('fs');
+            const file = '.clasp.json';
+            const data = fs.existsSync(file) ? JSON.parse(fs.readFileSync(file)) : {};
+            data.scriptId = process.env.SCRIPT_ID_SCAFFOLD;
+            data.projectId = process.env.GCP_PROJECT_ID;
+            fs.writeFileSync(file, JSON.stringify(data, null, 2));
+          "
+          clasp push -f
+          clasp deploy -d "$DEPLOY_DESC"

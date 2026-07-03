@@ -219,6 +219,89 @@ class RecordManager {
     }
     return true;
   }
+
+  /**
+   * Queries and filters records on a datasheet.
+   * Supports properties selection, filters matching, and sorting results.
+   * @param {string} objectType - Singular or plural name of the object type.
+   * @param {Object} [options] - Query options.
+   * @param {Object<string, *>} [options.filter] - Key-value pair properties to match.
+   * @param {string} [options.sortBy] - Property name to sort by.
+   * @param {string} [options.order="ASC"] - Sort direction ("ASC" or "DESC").
+   * @param {string[]} [options.select] - Array of column names to retrieve.
+   * @returns {Object[]} The list of matching record objects.
+   */
+  static queryRecords(objectType, options = {}) {
+    const { objConfig, spreadsheet, sheet } = this.getSheetAndConfig_(objectType);
+    const headerRowIndex = Number(objConfig["Header Number"]) || 1;
+    const lastRow = sheet.getLastRow();
+    
+    if (lastRow <= headerRowIndex) return [];
+    
+    const headers = sheet.getRange(headerRowIndex, 1, 1, sheet.getLastColumn()).getValues()[0];
+    const dataRows = sheet.getRange(headerRowIndex + 1, 1, lastRow - headerRowIndex, sheet.getLastColumn()).getValues();
+    
+    // Map raw rows to objects
+    let records = dataRows.map(row => {
+      const record = {};
+      headers.forEach((header, index) => {
+        record[header] = row[index];
+      });
+      return record;
+    });
+    
+    // Apply filters
+    if (options.filter) {
+      records = records.filter(record => {
+        for (const [key, val] of Object.entries(options.filter)) {
+          if (String(record[key]) !== String(val)) {
+            return false;
+          }
+        }
+        return true;
+      });
+    }
+    
+    // Apply sorting
+    if (options.sortBy) {
+      const sortKey = options.sortBy;
+      const order = String(options.order || "ASC").toUpperCase();
+      records.sort((a, b) => {
+        let valA = a[sortKey];
+        let valB = b[sortKey];
+        
+        // Handle date comparison
+        if (valA instanceof Date && valB instanceof Date) {
+          return order === "DESC" ? valB.getTime() - valA.getTime() : valA.getTime() - valB.getTime();
+        }
+        
+        // Handle numeric comparison
+        if (!isNaN(valA) && !isNaN(valB) && valA !== "" && valB !== "") {
+          return order === "DESC" ? Number(valB) - Number(valA) : Number(valA) - Number(valB);
+        }
+        
+        // Fallback to string comparison
+        valA = String(valA || "").toLowerCase();
+        valB = String(valB || "").toLowerCase();
+        if (valA < valB) return order === "DESC" ? 1 : -1;
+        if (valA > valB) return order === "DESC" ? -1 : 1;
+        return 0;
+      });
+    }
+    
+    // Apply select properties projection
+    if (options.select && Array.isArray(options.select)) {
+      records = records.map(record => {
+        const projected = {};
+        options.select.forEach(field => {
+          projected[field] = record[field];
+        });
+        return projected;
+      });
+    }
+    
+    return records;
+  }
 }
 
 /**
@@ -261,3 +344,14 @@ function recordManager_processRecordEdit(e) {
 function recordManager_addRecord(objectType, recordData) {
   return RecordManager.addRecord(objectType, recordData);
 }
+
+/**
+ * Global wrapper to query records from a datasheet with filters and sorting options.
+ * @param {string} objectType - Singular or plural name of the object type.
+ * @param {Object} [options] - Query options containing filter, sortBy, order, select.
+ * @returns {Object[]} The list of matching record objects.
+ */
+function recordManager_queryRecords(objectType, options) {
+  return RecordManager.queryRecords(objectType, options);
+}
+

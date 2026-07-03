@@ -12,9 +12,23 @@ class SpreadsheetRegistry {
     const cachedId = cache.get("bzq_config_sheet_id");
     if (cachedId) return cachedId;
 
-    const files = DriveApp.getFilesByName("BZQ_Tenant_Configuration");
-    if (files.hasNext()) {
-      const fileId = files.next().getId();
+    const env = PropertiesService.getScriptProperties().getProperty("BZQ_ENV") || "PROD";
+    const configName = env === "PROD" ? "BZQ Core Configuration" : `BZQ Core Configuration ${env}`;
+
+    const files = DriveApp.getFilesByName(configName);
+    let selectedFile = null;
+    let latestTime = 0;
+    while (files.hasNext()) {
+      const file = files.next();
+      if (file.isTrashed()) continue;
+      const modTime = file.getLastUpdated().getTime();
+      if (modTime > latestTime) {
+        latestTime = modTime;
+        selectedFile = file;
+      }
+    }
+    if (selectedFile) {
+      const fileId = selectedFile.getId();
       cache.put("bzq_config_sheet_id", fileId, 1500); // 25 minutes
       return fileId;
     }
@@ -28,7 +42,9 @@ class SpreadsheetRegistry {
    * @returns {string} The newly created spreadsheet ID.
    */
   static createConfigurationSpreadsheet(parentFolderId) {
-    const ss = SpreadsheetApp.create("BZQ_Tenant_Configuration");
+    const env = PropertiesService.getScriptProperties().getProperty("BZQ_ENV") || "PROD";
+    const configName = env === "PROD" ? "BZQ Core Configuration" : `BZQ Core Configuration ${env}`;
+    const ss = SpreadsheetApp.create(configName);
     const ssFile = DriveApp.getFileById(ss.getId());
     
     if (parentFolderId) {
@@ -196,5 +212,28 @@ class SpreadsheetRegistry {
   static warmCache(configId) {
     // Warm up the configuration library cache
     AppsUtilities.configurationManager_UpdateCachedConfigValues(false);
+  }
+
+  /**
+   * Helper to build a breadcrumb path for a file (e.g. Shared Drive / BZQ / Sales).
+   * @param {string} fileId - The Google Drive File ID.
+   * @returns {string} The formatted path string.
+   */
+  static getFolderPath(fileId) {
+    try {
+      const file = DriveApp.getFileById(fileId);
+      const path = [];
+      let current = file;
+      let parents = current.getParents();
+      while (parents.hasNext()) {
+        const parent = parents.next();
+        path.unshift(parent.getName());
+        current = parent;
+        parents = current.getParents();
+      }
+      return path.length > 0 ? path.join(" / ") : "My Drive";
+    } catch (e) {
+      return "Unknown Drive Location";
+    }
   }
 }
