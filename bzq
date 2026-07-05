@@ -4,7 +4,8 @@
 # Google Workspace Enterprise Application Manager
 
 # Source core helpers
-CORE_PATH="/Users/mitchgarner/source/repos/ESR-Biz_Qops/BZQ-cli/bzq-core.sh"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+CORE_PATH="$SCRIPT_DIR/BZQ-cli/bzq-core.sh"
 if [ -f "$CORE_PATH" ]; then
   source "$CORE_PATH"
 else
@@ -29,6 +30,7 @@ show_help() {
   echo -e "  ${BOLD}deploy <folder> [description]${NC}          Create a new versioned deployment of the project."
   echo -e "  ${BOLD}status <folder>${NC}                        Check local/remote sync status of files."
   echo -e "  ${BOLD}link-gcp <folder> <project-id>${NC}        Link the script project to a Google Cloud Project."
+  echo -e "  ${BOLD}bootstrap-dev <env-name> <parent-id>${NC}  Deploy a complete fresh dev environment with seeded data."
   echo ""
   echo -e "${BOLD}PULL OPTIONS:${NC}"
   echo -e "  ${BOLD}-d, --latest-deployed${NC}                 Query deployments and pull the latest deployed version."
@@ -110,7 +112,7 @@ case "$COMMAND" in
       log_error "Missing required <folder> argument. Example: './bzq pull AppsUtilities'"
     fi
 
-    TARGET_DIR="/Users/mitchgarner/source/repos/ESR-Biz_Qops/$FOLDER"
+    TARGET_DIR="$SCRIPT_DIR/$FOLDER"
     CLASP_CONFIG="$TARGET_DIR/.clasp.json"
 
     if [ ! -f "$CLASP_CONFIG" ]; then
@@ -256,7 +258,7 @@ case "$COMMAND" in
 
     if [ "$PUSH_ALL" = true ]; then
       # Discover packages containing .clasp.json
-      REPOS_DIR="/Users/mitchgarner/source/repos/ESR-Biz_Qops"
+      REPOS_DIR="$SCRIPT_DIR"
       folders=()
       for d in "$REPOS_DIR"/*/; do
         if [ -f "${d}.clasp.json" ]; then
@@ -328,7 +330,7 @@ case "$COMMAND" in
 
     else
       # Single folder push
-      TARGET_DIR="/Users/mitchgarner/source/repos/ESR-Biz_Qops/$FOLDER"
+      TARGET_DIR="$SCRIPT_DIR/$FOLDER"
       CLASP_CONFIG="$TARGET_DIR/.clasp.json"
 
       if [ ! -f "$CLASP_CONFIG" ]; then
@@ -375,7 +377,7 @@ case "$COMMAND" in
       log_error "Missing required <folder> argument. Example: './bzq deploy AppsUtilities \"v1.0.0 Release\"'"
     fi
 
-    TARGET_DIR="/Users/mitchgarner/source/repos/ESR-Biz_Qops/$FOLDER"
+    TARGET_DIR="$SCRIPT_DIR/$FOLDER"
     CLASP_CONFIG="$TARGET_DIR/.clasp.json"
 
     if [ ! -f "$CLASP_CONFIG" ]; then
@@ -416,7 +418,7 @@ case "$COMMAND" in
       log_error "Missing required <folder> argument. Example: './bzq status AppsUtilities'"
     fi
 
-    TARGET_DIR="/Users/mitchgarner/source/repos/ESR-Biz_Qops/$FOLDER"
+    TARGET_DIR="$SCRIPT_DIR/$FOLDER"
     CLASP_CONFIG="$TARGET_DIR/.clasp.json"
 
     if [ ! -f "$CLASP_CONFIG" ]; then
@@ -445,6 +447,15 @@ case "$COMMAND" in
       log_error "Usage: ./bzq init <folder> [parent-folder-id]"
     fi
     init_script_project "$FOLDER" "$PARENT_ID"
+    ;;
+
+  bootstrap-dev)
+    ENV_NAME="$1"
+    PARENT_ID="$2"
+    if [ -z "$ENV_NAME" ] || [ -z "$PARENT_ID" ]; then
+      log_error "Usage: ./bzq bootstrap-dev <env-name> <parent-folder-id>"
+    fi
+    bootstrap_dev_environment "$ENV_NAME" "$PARENT_ID"
     ;;
 
   *)

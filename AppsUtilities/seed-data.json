@@ -1,0 +1,164 @@
+{
+  "__ConfigurationProperties": [
+    [
+      "Configuration Key",
+      "Value",
+      "Notes"
+    ],
+    [
+      "DEBUG_MODE",
+      true,
+      "Set to true to turn on debug level logging"
+    ],
+    [
+      "ProcessValidation_ENABLED",
+      true,
+      "Enables validation processing for the workbook"
+    ],
+    [
+      "HEADER_FORMAT",
+      "{\"background\":\"#d9d9d9\",\"fontColor\":\"#000000\",\"fontFamily\":\"Arial\",\"fontSize\":10,\"fontWeight\":\"bold\",\"fontStyle\":\"normal\",\"fontLine\":\"none\",\"horizontalAlignment\":\"center\",\"verticalAlignment\":\"bottom\"}"
+    ],
+    [
+      "RECORD_FORMAT",
+      "{\"background\":\"#ffffff\",\"fontColor\":\"#000000\",\"fontFamily\":\"Arial\",\"fontSize\":10,\"fontWeight\":\"normal\",\"fontStyle\":\"normal\",\"fontLine\":\"none\",\"horizontalAlignment\":\"general-left\",\"verticalAlignment\":\"bottom\",\"borders\":{\"top\":{\"style\":\"SOLID\",\"color\":\"#000000\"},\"bottom\":{\"style\":\"SOLID\",\"color\":\"#000000\"},\"left\":{\"style\":\"SOLID\",\"color\":\"#000000\"},\"right\":{\"style\":\"SOLID\",\"color\":\"#000000\"}}}"
+    ]
+  ],
+  "__SequenceConfiguration": [
+    [
+      "Sequence",
+      "Sequence Number",
+      "Sequence Name",
+      "Datasheet Name",
+      "Sequence Prefix",
+      "Starting Number",
+      "Format",
+      "Current Value",
+      "Enabled"
+    ],
+    [
+      "=arrayformula(if(not(isblank(B2:B)),if(not(isblank(C2:C)),text(B2:B,\"0000#\") & \" - \" & C2:C,),))",
+      "xSC-00001",
+      "Sequence",
+      "__SequenceConfiguration",
+      "xSC-",
+      10000,
+      "0000#",
+      10000,
+      true
+    ],
+    [
+      "",
+      "xSC-00002",
+      "Objects",
+      "__ObjectConfiguration",
+      "xOC-",
+      1000,
+      "000#",
+      1000,
+      true
+    ],
+    [
+      "",
+      "xSC-00003",
+      "Object Relations",
+      "__LookupConfiguration",
+      "xLC-",
+      10000,
+      "0000#",
+      10000,
+      true
+    ],
+    [
+      "",
+      "xSC-00004",
+      "Static Dropdowns",
+      "__DropdownConfiguration",
+      "xDC-",
+      10000,
+      "0000#",
+      10000,
+      true
+    ],
+    [
+      "",
+      "xSC-00005",
+      "Global Dropdowns",
+      "__GlobalDropdownConfiguration",
+      "xGD-",
+      10000,
+      "0000#",
+      10000,
+      true
+    ],
+    [
+      "",
+      "xSC-00006",
+      "Spreadsheets",
+      "__Spreadsheets",
+      "xSS-",
+      1000,
+      "000#",
+      1000,
+      true
+    ]
+  ],
+  "__ObjectConfiguration": [
+    [
+      "Object ID",
+      "Object Name",
+      "Description",
+      "Spreadsheet ID",
+      "Primary Key Fields",
+      "ID Field Name",
+      "Singular Name",
+      "Header Line Number",
+      "Validation Type",
+      "Columns to Validate",
+      "Active"
+    ]
+  ],
+  "__LookupConfiguration": [
+    [
+      "Lookup Name",
+      "Lookup ID",
+      "Source Object Name",
+      "Source Field Name",
+      "Target Object Name",
+      "Target Display Range",
+      "Active"
+    ]
+  ],
+  "__DropdownConfiguration": [
+    [
+      "Dropdown ID",
+      "Object Name",
+      "Field Name",
+      "Dropdown Type",
+      "Source Sheet Name",
+      "Source Column Name",
+      "Static Values",
+      "Active"
+    ]
+  ],
+  "__GlobalDropdownConfiguration": [
+    [
+      "Global Dropdown ID",
+      "Dropdown Name",
+      "Field Name",
+      "Value",
+      "Order",
+      "Active"
+    ]
+  ],
+  "__Spreadsheets": [
+    [
+      "Spreadsheet Name",
+      "Spreadsheet ID"
+    ],
+    [
+      "Configuration",
+      "${CONFIG_SS_ID}"
+    ]
+  ]
+}

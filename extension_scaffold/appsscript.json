@@ -1,68 +1,7 @@
 {
   "timeZone": "America/New_York",
   "dependencies": {
-    "libraries": [
-      {
-        "userSymbol": "AppsUtilities",
-        "libraryId": "1KsqYmH746evWxO20E850u_JFcUlRZW-jQsTz5CY7m-UpriQXNa8_xYnY",
-        "version": "1",
-        "developmentMode": true
-      },
-      {
-        "userSymbol": "FormsEngine",
-        "libraryId": "12KlTGCao0iLOAwB0QaBpn-MWcveFUifSgOQCCJpXRtUPtajUdje8uzSi",
-        "version": "1",
-        "developmentMode": true
-      }
-    ]
   },
   "exceptionLogging": "STACKDRIVER",
-  "runtimeVersion": "V8",
-  "oauthScopes": [
-    "https://www.googleapis.com/auth/spreadsheets",
-    "https://www.googleapis.com/auth/drive.file",
-    "https://www.googleapis.com/auth/drive.readonly",
-    "https://www.googleapis.com/auth/script.external_request",
-    "https://www.googleapis.com/auth/script.scriptapp",
-    "https://www.googleapis.com/auth/drive.addons.metadata.readonly",
-    "https://www.googleapis.com/auth/script.locale"
-  ],
-  "urlFetchWhitelist": [
-    "https://*.googleapis.com/",
-    "https://*.google.com/"
-  ],
-  "addOns": {
-    "common": {
-      "name": "BZQ (BizChops) ERP Workspace Extension",
-      "logoUrl": "https://ssl.gstatic.com/images/branding/product/2x/sheets_2020q4_48dp.png",
-      "useLocaleFromApp": true,
-      "homepageTrigger": {
-        "runFunction": "onAddonHomepage",
-        "enabled": true
-      },
-      "layoutProperties": {
-        "primaryColor": "#1a73e8",
-        "secondaryColor": "#00796b"
-      },
-      "universalActions": [
-        {
-          "label": "Clear BZQ Cache",
-          "runFunction": "clearBqzCache"
-        }
-      ]
-    },
-    "sheets": {
-      "homepageTrigger": {
-        "runFunction": "onSheetsHomepage"
-      }
-    },
-    "drive": {
-      "homepageTrigger": {
-        "runFunction": "onDriveHomepage"
-      },
-      "onItemsSelectedTrigger": {
-        "runFunction": "onDriveItemsSelected"
-      }
-    }
-  }
+  "runtimeVersion": "V8"
 }

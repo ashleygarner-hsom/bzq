@@ -1,0 +1,24 @@
+{
+  "__ConfigurationProperties": [
+    [
+      "Configuration Key",
+      "Value",
+      "Notes"
+    ],
+    [
+      "FORMS_ENGINE_ENABLED",
+      true,
+      "Enables BZQ HTML Forms Engine layout parsing"
+    ]
+  ],
+  "__Spreadsheets": [
+    [
+      "Spreadsheet Name",
+      "Spreadsheet ID"
+    ],
+    [
+      "Forms Engine",
+      "${FORMS_SS_ID}"
+    ]
+  ]
+}

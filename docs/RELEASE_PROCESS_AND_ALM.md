@@ -34,7 +34,7 @@ flowchart TD
 
 ## 2. CI/CD Pipeline Configuration (GitHub Secrets)
 
-The automated deployment pipeline defined in [.github/workflows/deploy.yml](file:///Users/mitchgarner/source/repos/ESR-Biz_Qops/.github/workflows/deploy.yml) uses Git references to resolve target scripts.
+The automated deployment pipeline defined in [.github/workflows/deploy.yml](../.github/workflows/deploy.yml) uses Git references to resolve target scripts.
 
 To support this, the following secrets must be added to your GitHub Repository Settings (**Settings** -> **Secrets and variables** -> **Actions**):
 
@@ -108,7 +108,7 @@ To make the Add-on available to users in Google Sheets and Google Drive:
 1. Inside the Google Workspace Marketplace SDK dashboard, click **App Integration**.
 2. Set the **Extension Type** to: `Google Workspace Add-on`.
 3. Paste the **Apps Script Deployment ID** of your target release (printed by `./bzq deploy` or your CI/CD log).
-4. Under **OAuth Scopes**, add the exact scopes declared in [appsscript.json](file:///Users/mitchgarner/source/repos/ESR-Biz_Qops/extension_scaffold/appsscript.json):
+4. Under **OAuth Scopes**, add the exact scopes declared in [appsscript.json](../extension_scaffold/appsscript.json):
    - `https://www.googleapis.com/auth/spreadsheets`
    - `https://www.googleapis.com/auth/drive.file`
    - `https://www.googleapis.com/auth/drive.readonly`
@@ -128,3 +128,36 @@ To make the Add-on available to users in Google Sheets and Google Drive:
    * **Descriptions**: Short description and detailed breakdown of BZQ's ERP extension capabilities.
    * **Graphics**: Icon (128x128px), Promotion Graphic (440x280px), and at least one Google Sheets/Drive sidebar screenshot.
 4. Click **Publish** or **Submit for Review**.
+
+---
+
+## 5. BZQ Modular Seeding Framework
+
+Each codebase module (Apps Script project folder) in the BZQ platform contains a designated `seed-data.json` file defining its database tables, properties, sequences, and configurations.
+
+### Directory Structure of a Module
+```text
+{Module Name}/
+├── appsscript.json
+├── seed-data.json
+└── {Source Files}.js
+```
+
+### seed-data.json Specification
+The seed file defines a JSON dictionary mapping sheet names to data rows. For example, `AppsUtilities/seed-data.json` defines the core configurations, while `FormsEngine/seed-data.json` appends the `FORMS_ENGINE_ENABLED` flag.
+
+```json
+{
+  "__ConfigurationProperties": [
+    ["Configuration Key", "Value", "Notes"],
+    ["FORMS_ENGINE_ENABLED", true, "Enables BZQ HTML Forms Engine layout parsing"]
+  ]
+}
+```
+
+### Dynamic Placeholders and Lookups Translation
+During local development environment bootstrapping (`./bzq bootstrap-dev`), the installer:
+1. **Discovers and Merges Seed Data**: Finds all `seed-data.json` files in the repository and merges them in dependency order.
+2. **Prompts for Sequence Configurations**: Interactively queries the developer in the terminal for Prefix and Start overrides for all sequences defined in `__SequenceConfiguration`.
+3. **Translates Lookups at Runtime**: Automatically detects and replaces template IDs (e.g. `xSC-10002`) with the customized sequence strings, maintaining all inter-object relations and formulas.
+

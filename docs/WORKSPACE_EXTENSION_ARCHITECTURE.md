@@ -2,8 +2,8 @@
 
 This document defines the architectural design, migration path, and implementation decisions for transitioning the BZQ (BizChops) ERP platform from container-bound spreadsheet scripts to a centralized **Google Workspace Add-on (GWAO)** deployment model. 
 
-* For production deployment strategies and application lifecycle management, see the [Deployment and ALM Guide](file:///Users/mitchgarner/source/repos/ESR-Biz_Qops/docs/DEPLOYMENT_AND_ALM.md).
-* For development pipelines, CI/CD, and Google Workspace Marketplace listings, see the [Release Process and ALM Guide](file:///Users/mitchgarner/source/repos/ESR-Biz_Qops/docs/RELEASE_PROCESS_AND_ALM.md).
+* For production deployment strategies and application lifecycle management, see the [Deployment and ALM Guide](./DEPLOYMENT_AND_ALM.md).
+* For development pipelines, CI/CD, and Google Workspace Marketplace listings, see the [Release Process and ALM Guide](./RELEASE_PROCESS_AND_ALM.md).
 
 ---
 
