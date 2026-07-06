@@ -335,4 +335,94 @@ bootstrap_dev_environment() {
   log_banner
 }
 
+# Install and configure a single module on an existing environment
+install_module() {
+  local module_name="$1"
+  local env_name="$2"
+  local parent_id="$3"
+
+  if [ ! -d "$SCRIPT_DIR/$module_name" ]; then
+    log_error "Module folder '$module_name' not found in repository."
+    exit 1
+  fi
+
+  log_banner
+  log_info "INSTALLING MODULE '$module_name' ON ENVIRONMENT: $env_name"
+  log_banner
+
+  # 1. Resolve existing script IDs if they exist
+  local apps_utilities_id=""
+  if [ -f "$SCRIPT_DIR/AppsUtilities/.clasp.json" ]; then
+    apps_utilities_id=$(node -p "require('$SCRIPT_DIR/AppsUtilities/.clasp.json').scriptId")
+  fi
+  local forms_engine_id=""
+  if [ -f "$SCRIPT_DIR/FormsEngine/.clasp.json" ]; then
+    forms_engine_id=$(node -p "require('$SCRIPT_DIR/FormsEngine/.clasp.json').scriptId")
+  fi
+
+  # 2. Update library dependencies in target module manifest if needed
+  if [ "$module_name" = "FormsEngine" ] && [ -n "$apps_utilities_id" ]; then
+    log_info "Updating FormsEngine library dependency to use: $apps_utilities_id"
+    node -e "
+      const fs = require('fs');
+      const path = '$SCRIPT_DIR/FormsEngine/appsscript.json';
+      const manifest = JSON.parse(fs.readFileSync(path, 'utf8'));
+      const lib = manifest.dependencies.libraries.find(l => l.userSymbol === 'AppsUtilities');
+      if (lib) lib.libraryId = '$apps_utilities_id';
+      fs.writeFileSync(path, JSON.stringify(manifest, null, 2));
+    "
+  fi
+
+  if [ "$module_name" = "extension_scaffold" ]; then
+    log_info "Updating extension_scaffold library dependencies..."
+    node -e "
+      const fs = require('fs');
+      const path = '$SCRIPT_DIR/extension_scaffold/appsscript.json';
+      const manifest = JSON.parse(fs.readFileSync(path, 'utf8'));
+      const libApps = manifest.dependencies.libraries.find(l => l.userSymbol === 'AppsUtilities');
+      if (libApps) libApps.libraryId = '$apps_utilities_id';
+      const libForms = manifest.dependencies.libraries.find(l => l.userSymbol === 'FormsEngine');
+      if (libForms) libForms.libraryId = '$forms_engine_id';
+      fs.writeFileSync(path, JSON.stringify(manifest, null, 2));
+    "
+  fi
+
+  # 3. Provision standalone script project if missing
+  if [ ! -f "$SCRIPT_DIR/$module_name/.clasp.json" ]; then
+    log_info "Provisioning $module_name standalone script..."
+    (
+      cd "$SCRIPT_DIR/$module_name" || exit 1
+      PATH="/opt/homebrew/opt/node@20/bin:$PATH" npx @google/clasp create --title "$module_name [$env_name]" --type standalone --parentId "$parent_id"
+    )
+    check_clasp_project "$SCRIPT_DIR/$module_name/.clasp.json" "$module_name"
+  fi
+
+  local script_id
+  script_id=$(node -p "require('$SCRIPT_DIR/$module_name/.clasp.json').scriptId")
+  log_success "$module_name Script ID: $script_id"
+
+  # 4. Push module code
+  log_info "Pushing $module_name codebase..."
+  (
+    cd "$SCRIPT_DIR/$module_name" || exit 1
+    ensure_claspignore "$SCRIPT_DIR/$module_name"
+    PATH="/opt/homebrew/opt/node@20/bin:$PATH" npx @google/clasp push -f
+    log_info "Deploying $module_name version 1..."
+    PATH="/opt/homebrew/opt/node@20/bin:$PATH" npx @google/clasp deploy --description "Installed module v1"
+  )
+
+  # 5. Upsert seed data configuration
+  log_info "Upserting seed database configurations..."
+  node "$SCRIPT_DIR/scripts/seed-sheets.js" "$env_name" "$parent_id" "$apps_utilities_id" "$forms_engine_id" "$script_id" "--module=$module_name"
+  if [ $? -ne 0 ]; then
+    log_error "Database seeding failed for module $module_name!"
+    exit 1
+  fi
+
+  log_banner
+  log_success "MODULE '$module_name' INSTALLATION COMPLETE!"
+  log_info "Open your Apps Script dashboard to view the project: https://script.google.com/d/$script_id/edit"
+  log_banner
+}
+
 

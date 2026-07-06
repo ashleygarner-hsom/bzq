@@ -112,3 +112,20 @@ To cold-deploy your workspace environment from the terminal:
    ```bash
    ./bzq bootstrap-dev LOCAL_ASHLEYGARNER-HSOM 13n8-ylbfDFcu8ZGlB9JTTLP2crFVEj3J
    ```
+
+### To Install or Update a Single Module on an Existing Environment
+If you are developing a new module (e.g. `FormsEngine`) and want to deploy it to an existing environment without destroying it:
+
+1. **Execute Module Installation**:
+   ```bash
+   ./bzq install-module <module-name> <env-name> <parent-folder-id>
+   ```
+   *Example:*
+   ```bash
+   ./bzq install-module FormsEngine LOCAL_ASHLEYGARNER-HSOM 13n8-ylbfDFcu8ZGlB9JTTLP2crFVEj3J
+   ```
+
+2. **How Upserts are Merged**:
+   * **Script Linking**: Resolves current library IDs (like `AppsUtilities`) from your local clasp configurations.
+   * **Spreadsheet Lookup**: Dynamically checks your Google Drive folder for `BZQ Core Configuration [envName]` and links to it.
+   * **Non-Destructive Merge**: Compares table keys (e.g. key indices in `__ConfigurationProperties` or `__SequenceConfiguration`). It appends only missing records to the existing spreadsheet sheets, preserving user configurations and counters.

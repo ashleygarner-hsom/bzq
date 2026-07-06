@@ -31,6 +31,7 @@ show_help() {
   echo -e "  ${BOLD}status <folder>${NC}                        Check local/remote sync status of files."
   echo -e "  ${BOLD}link-gcp <folder> <project-id>${NC}        Link the script project to a Google Cloud Project."
   echo -e "  ${BOLD}bootstrap-dev <env-name> <parent-id>${NC}  Deploy a complete fresh dev environment with seeded data."
+  echo -e "  ${BOLD}install-module <module-name> <env-name> <parent-id>${NC} Install/configure a module on an existing environment."
   echo ""
   echo -e "${BOLD}PULL OPTIONS:${NC}"
   echo -e "  ${BOLD}-d, --latest-deployed${NC}                 Query deployments and pull the latest deployed version."
@@ -456,6 +457,16 @@ case "$COMMAND" in
       log_error "Usage: ./bzq bootstrap-dev <env-name> <parent-folder-id>"
     fi
     bootstrap_dev_environment "$ENV_NAME" "$PARENT_ID"
+    ;;
+
+  install-module)
+    MODULE_NAME="$1"
+    ENV_NAME="$2"
+    PARENT_ID="$3"
+    if [ -z "$MODULE_NAME" ] || [ -z "$ENV_NAME" ] || [ -z "$PARENT_ID" ]; then
+      log_error "Usage: ./bzq install-module <module-name> <env-name> <parent-folder-id>"
+    fi
+    install_module "$MODULE_NAME" "$ENV_NAME" "$PARENT_ID"
     ;;
 
   *)
