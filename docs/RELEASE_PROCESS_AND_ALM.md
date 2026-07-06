@@ -135,29 +135,6 @@ To make the Add-on available to users in Google Sheets and Google Drive:
 
 Each codebase module (Apps Script project folder) in the BZQ platform contains a designated `seed-data.json` file defining its database tables, properties, sequences, and configurations.
 
-### Directory Structure of a Module
-```text
-{Module Name}/
-├── appsscript.json
-├── seed-data.json
-└── {Source Files}.js
-```
+For a comprehensive guide on building modules, configuring seed databases, dynamic translations, and utilizing the sequence prompting wizard, refer to the **[Modular Development & Seeding Framework Guide](./MODULAR_SEEDING_AND_DEVELOPMENT.md)**.
 
-### seed-data.json Specification
-The seed file defines a JSON dictionary mapping sheet names to data rows. For example, `AppsUtilities/seed-data.json` defines the core configurations, while `FormsEngine/seed-data.json` appends the `FORMS_ENGINE_ENABLED` flag.
-
-```json
-{
-  "__ConfigurationProperties": [
-    ["Configuration Key", "Value", "Notes"],
-    ["FORMS_ENGINE_ENABLED", true, "Enables BZQ HTML Forms Engine layout parsing"]
-  ]
-}
-```
-
-### Dynamic Placeholders and Lookups Translation
-During local development environment bootstrapping (`./bzq bootstrap-dev`), the installer:
-1. **Discovers and Merges Seed Data**: Finds all `seed-data.json` files in the repository and merges them in dependency order.
-2. **Prompts for Sequence Configurations**: Interactively queries the developer in the terminal for Prefix and Start overrides for all sequences defined in `__SequenceConfiguration`.
-3. **Translates Lookups at Runtime**: Automatically detects and replaces template IDs (e.g. `xSC-10002`) with the customized sequence strings, maintaining all inter-object relations and formulas.
 

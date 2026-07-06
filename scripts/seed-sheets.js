@@ -207,7 +207,6 @@ async function main() {
         // Save overrides back to row values
         row[4] = userPrefix;
         row[5] = userStart;
-        row[7] = userStart; // Current Value counter
 
         // Track offsets for lookup translations
         const offset = userStart - defaultStart;
@@ -216,10 +215,27 @@ async function main() {
           originalPrefix: defaultPrefix,
           newPrefix: userPrefix,
           originalStart: defaultStart,
-          newStart: userStart
+          newStart: userStart,
+          formatStr: row[6]
         };
 
         console.log(`  -> Applied: Prefix="${userPrefix}", Start=${userStart} (Offset: ${offset >= 0 ? '+' : ''}${offset})`);
+      }
+      
+      // Update Current Value to match the number of seeded records in each datasheet
+      console.log('\nInitializing sequence counters...');
+      for (let i = 1; i < sequenceConfig.length; i++) {
+        const row = sequenceConfig[i];
+        const datasheetName = row[3];
+        const userStart = row[5];
+        
+        const dataRowCount = (seedTemplates[datasheetName] && seedTemplates[datasheetName].length > 1)
+          ? seedTemplates[datasheetName].length - 1
+          : 0;
+          
+        const finalCurrentValue = userStart + dataRowCount;
+        row[7] = finalCurrentValue;
+        console.log(`  -> "${row[2]}": Current Value initialized to ${finalCurrentValue} (${dataRowCount} seeded records).`);
       }
       console.log('====================================================\n');
     }
@@ -248,13 +264,24 @@ async function main() {
       if (extensionId) result = result.replace(/\$\{EXTENSION_SCRIPT_ID\}/g, extensionId);
       
       // Dynamic sequence lookup ID translation
-      // Searches for patterns like: xSC-10002 or xOC-1000
+      // Searches for patterns like: xSC-00001 or xSC-10001 or xOC-1000
       for (const [defaultPrefix, conf] of Object.entries(sequenceOffsets)) {
         const regex = new RegExp(`${defaultPrefix.replace(/[-[\]{}()*+?.,\\^$|#\s]/g, '\\$&')}(\\d+)`, 'g');
         result = result.replace(regex, (match, digits) => {
-          const num = parseInt(digits);
-          const newNum = num + conf.offset;
-          return `${conf.newPrefix}${newNum}`;
+          const val = parseInt(digits);
+          let absoluteNum;
+          if (val < conf.originalStart) {
+            // It is a 1-based index (e.g. 00001) -> Map to starting number + index - 1
+            absoluteNum = conf.newStart + val - 1;
+          } else {
+            // It is an absolute ID (e.g. 10002) -> Map to starting number + offset
+            absoluteNum = conf.newStart + (val - conf.originalStart);
+          }
+          
+          // Pad left with zeros based on the format string
+          const padLength = conf.formatStr ? conf.formatStr.length : 5;
+          const formattedNum = String(absoluteNum).padStart(padLength, '0');
+          return `${conf.newPrefix}${formattedNum}`;
         });
       }
 
