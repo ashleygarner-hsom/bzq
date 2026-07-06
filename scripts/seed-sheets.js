@@ -10,6 +10,7 @@ const fs = require('fs');
 const path = require('path');
 const https = require('https');
 const readline = require('readline');
+const crypto = require('crypto');
 
 // Parse CLI Arguments
 let envName = null;
@@ -91,6 +92,38 @@ function makeRequest(url, options = {}, postData = null) {
 }
 
 /**
+ * Generates an OAuth access token using a Google Cloud Service Account JSON key.
+ * @param {Object} key - Service Account JSON key object.
+ * @returns {Promise<string>} Access token.
+ */
+async function getAccessTokenFromSA(key) {
+  const iat = Math.floor(Date.now() / 1000);
+  const header = { alg: 'RS256', typ: 'JWT' };
+  const claims = {
+    iss: key.client_email,
+    scope: 'https://www.googleapis.com/auth/spreadsheets https://www.googleapis.com/auth/drive',
+    aud: 'https://oauth2.googleapis.com/token',
+    exp: iat + 3600,
+    iat
+  };
+  const base64Url = (obj) => Buffer.from(JSON.stringify(obj)).toString('base64url');
+  const tokenInput = `${base64Url(header)}.${base64Url(claims)}`;
+  const signature = crypto.createSign('RSA-SHA256').update(tokenInput).sign(key.private_key, 'base64url');
+  const postData = new URLSearchParams({
+    grant_type: 'urn:ietf:params:oauth:grant-type:jwt-bearer',
+    assertion: `${tokenInput}.${signature}`
+  }).toString();
+  const res = await makeRequest('https://oauth2.googleapis.com/token', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/x-www-form-urlencoded',
+      'Content-Length': Buffer.byteLength(postData),
+    }
+  }, postData);
+  return res.access_token;
+}
+
+/**
  * Loads developer authentication configurations from local gcloud ADC or clasp.
  * @returns {{ data: Object, type: string }} Credentials JSON payload and source type.
  * @throws {Error} If no credentials credentials files can be located.
@@ -111,17 +144,22 @@ function getCredentials() {
 
 /**
  * Refreshes the OAuth credentials to obtain a new API access token.
+ * Checks for a local service-account.json key file first, falling back to clasp.
  * @returns {Promise<string>} The refreshed Google API access token string.
  */
 async function getAccessToken() {
+  const saPath = path.join(REPO_DIR, 'service-account.json');
+  if (fs.existsSync(saPath)) {
+    console.log('Using service-account.json credentials...');
+    return getAccessTokenFromSA(JSON.parse(fs.readFileSync(saPath, 'utf8')));
+  }
   const { data } = getCredentials();
-  const postParams = {
+  const postData = new URLSearchParams({
     client_id: data.client_id,
     client_secret: data.client_secret,
     refresh_token: data.refresh_token,
     grant_type: 'refresh_token',
-  };
-  const postData = new URLSearchParams(postParams).toString();
+  }).toString();
   const res = await makeRequest('https://oauth2.googleapis.com/token', {
     method: 'POST',
     headers: {
