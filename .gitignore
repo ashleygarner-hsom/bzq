@@ -73,3 +73,7 @@ dist/
 build/
 out/
 *.log
+
+# Secrets files
+cient_secret.json
+
