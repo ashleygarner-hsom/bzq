@@ -19,6 +19,7 @@ class SpreadsheetRegistry {
         const match = name.match(/\[(.*?)\]/);
         env = match ? match[1] : "PROD";
       } catch (ex) {
+        console.error("Failed to auto-detect environment name from script title: " + ex.message);
         env = "PROD";
       }
     }
@@ -26,22 +27,22 @@ class SpreadsheetRegistry {
   }
 
   /**
-   * Searches the user's Google Drive for files matching a specific configuration name and
-   * filters out trashed files to return the ID of the most recently updated instance. This 
-   * ensures we always connect to the latest active configuration database sheet.
-   * @param {string} name - The exact file name of the configuration spreadsheet (e.g., 'BZQ Core Configuration').
-   *                        Used to lookup the specific sheet in Drive.
-   * @returns {string|null} The unique Google Drive file ID of the most recently modified sheet, 
-   *                        or null if no matching file exists in Drive.
+   * Searches the user's Google Drive for any spreadsheet containing the name 
+   * 'BZQ Core Configuration' (including environment-suffixed ones) and returns
+   * the ID of the most recently updated instance. This ensures automatic
+   * discovery of local/dev configuration databases without manual configuration.
+   * @returns {string|null} The unique Google Drive file ID of the latest configuration sheet,
+   *                        or null if none found in Drive.
    * @private
    */
-  static findLatestFileIdByName_(name) {
-    const files = DriveApp.getFilesByName(name);
+  static searchLatestConfigId_() {
+    const query = "title contains 'BZQ Core Configuration' and " +
+      "mimeType = 'application/vnd.google-apps.spreadsheet' and trashed = false";
+    const files = DriveApp.searchFiles(query);
     let latestId = null;
     let latestTime = 0;
     while (files.hasNext()) {
       const file = files.next();
-      if (file.isTrashed()) continue;
       const time = file.getLastUpdated().getTime();
       if (time > latestTime) {
         latestTime = time;
@@ -53,7 +54,7 @@ class SpreadsheetRegistry {
 
   /**
    * Scans Google Drive to locate the BZQ Tenant Configuration spreadsheet.
-   * Resolves the configuration sheet by name using the current environment identifier,
+   * Resolves the configuration sheet by scanning Drive for any config spreadsheet,
    * caching the resolved file ID in the Apps Script Script Cache to prevent excessive 
    * Google Drive API search requests on subsequent executions.
    * @returns {string|null} The unique spreadsheet ID for the BZQ configuration registry, 
@@ -64,10 +65,7 @@ class SpreadsheetRegistry {
     const cachedId = cache.get("bzq_config_sheet_id");
     if (cachedId) return cachedId;
 
-    const env = this.getEnvName_();
-    const name = env === "PROD" ? "BZQ Core Configuration" : `BZQ Core Configuration ${env}`;
-    const fileId = this.findLatestFileIdByName_(name);
-
+    const fileId = this.searchLatestConfigId_();
     if (fileId) {
       cache.put("bzq_config_sheet_id", fileId, 1500);
     }
@@ -75,35 +73,63 @@ class SpreadsheetRegistry {
   }
 
   /**
-   * Provisions a new BZQ Configuration Spreadsheet.
-   * Places the file in the designated parent folder if provided.
-   * @param {string|null} parentFolderId - Optional Google Drive Folder ID.
-   * @returns {string} The newly created spreadsheet ID.
+   * Locates an untrashed file with the matching name inside a specific folder (or Root My Drive if null).
+   * @param {string|null} folderId - The unique Google Drive Folder ID, or null to lookup in My Drive Root.
+   *                                Used as the parent directory to constrain the search.
+   * @param {string} name - The exact filename string to search for (e.g. 'BZQ Core Configuration').
+   *                        Used to find files by name.
+   * @returns {string|null} The unique Google Drive file ID of the matched configuration sheet, or null if not found.
+   * @private
    */
-  static createConfigurationSpreadsheet(parentFolderId) {
-    const env = PropertiesService.getScriptProperties().getProperty("BZQ_ENV") || "PROD";
-    const configName = env === "PROD" ? "BZQ Core Configuration" : `BZQ Core Configuration ${env}`;
-    const ss = SpreadsheetApp.create(configName);
-    const ssFile = DriveApp.getFileById(ss.getId());
-    
-    if (parentFolderId) {
-      const folder = DriveApp.getFolderById(parentFolderId);
-      folder.addFile(ssFile);
-      DriveApp.getRootFolder().removeFile(ssFile);
+  static locateConfigInFolder_(folderId, name) {
+    const folder = folderId ? DriveApp.getFolderById(folderId) : DriveApp.getRootFolder();
+    const files = folder.getFilesByName(name);
+    while (files.hasNext()) {
+      const file = files.next();
+      if (!file.isTrashed()) return file.getId();
     }
-    // Add default schema sheets
+    return null;
+  }
+
+  /**
+   * Initializes a newly created Spreadsheet with the default schema sheets.
+   * @param {SpreadsheetApp.Spreadsheet} ss - The newly created Google Spreadsheet object to initialize.
+   *                                          Used to insert tables.
+   * @returns {void}
+   * @private
+   */
+  static initializeSchemaSheets_(ss) {
     const sheets = [
-      "__ConfigurationProperties",
-      "__SequenceConfiguration",
-      "__ObjectConfiguration",
-      "__LookupConfiguration",
-      "__DropdownConfiguration",
-      "__GlobalDropdownConfiguration",
+      "__ConfigurationProperties", "__SequenceConfiguration",
+      "__ObjectConfiguration", "__LookupConfiguration",
+      "__DropdownConfiguration", "__GlobalDropdownConfiguration",
       "__Spreadsheets"
     ];
     sheets.forEach(name => ss.insertSheet(name));
-    
-    // Store in cache
+  }
+
+  /**
+   * Provisions a new BZQ Configuration Spreadsheet or resolves an existing one in the folder.
+   * Places the file in the designated parent folder if provided.
+   * @param {string|null} parentFolderId - Optional Google Drive Folder ID.
+   *                                       Used as the destination directory for the new sheet.
+   * @returns {string} The unique spreadsheet ID of the resolved or newly provisioned BZQ configuration.
+   */
+  static createConfigurationSpreadsheet(parentFolderId) {
+    const env = this.getEnvName_();
+    const name = env === "PROD" ? "BZQ Core Configuration" : `BZQ Core Configuration ${env}`;
+    const existingId = this.locateConfigInFolder_(parentFolderId, name);
+    if (existingId) {
+      CacheService.getScriptCache().put("bzq_config_sheet_id", existingId, 1500);
+      return existingId;
+    }
+    const ss = SpreadsheetApp.create(name);
+    const ssFile = DriveApp.getFileById(ss.getId());
+    if (parentFolderId) {
+      DriveApp.getFolderById(parentFolderId).addFile(ssFile);
+      DriveApp.getRootFolder().removeFile(ssFile);
+    }
+    this.initializeSchemaSheets_(ss);
     CacheService.getScriptCache().put("bzq_config_sheet_id", ss.getId(), 1500);
     return ss.getId();
   }
