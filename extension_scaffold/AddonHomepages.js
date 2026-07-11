@@ -254,7 +254,7 @@ function buildMainMenuCard(configId, isPersonalDrive = false) {
     ));
   }
   
-  const env = PropertiesService.getScriptProperties().getProperty("BZQ_ENV") || "PROD";
+  const env = SpreadsheetRegistry.getEnvName_();
   section.addWidget(CardService.newKeyValue()
     .setTopLabel(`Connected: BZQ Core Configuration [${env}]`)
     .setContent("Status: Online")
