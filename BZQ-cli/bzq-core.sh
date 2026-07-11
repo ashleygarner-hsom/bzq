@@ -136,6 +136,26 @@ ensure_claspignore() {
   fi
 }
 
+# Create clasp project without overwriting existing appsscript.json
+create_clasp_project_safe() {
+  local target_dir="$1"
+  shift
+  local clasp_args=("$@")
+  local backup=""
+  if [ -f "$target_dir/appsscript.json" ]; then
+    backup=$(cat "$target_dir/appsscript.json")
+  fi
+  (
+    cd "$target_dir" || exit 1
+    PATH="/opt/homebrew/opt/node@20/bin:$PATH" npx @google/clasp create "${clasp_args[@]}"
+  )
+  local status=$?
+  if [ -n "$backup" ]; then
+    echo "$backup" > "$target_dir/appsscript.json"
+  fi
+  return $status
+}
+
 # Link clasp project to GCP project
 link_gcp_project() {
   local folder="$1"
@@ -188,10 +208,7 @@ init_script_project() {
     parent_args+=("--parentId" "$parent_id")
   fi
 
-  (
-    cd "$target_dir" || log_error "Failed to access directory $target_dir"
-    PATH="/opt/homebrew/opt/node@20/bin:$PATH" npx @google/clasp create --title "BZQ $folder Extension" --type standalone "${parent_args[@]}"
-  )
+  create_clasp_project_safe "$target_dir" --title "BZQ $folder Extension" --type standalone "${parent_args[@]}"
 
   if [ $? -eq 0 ]; then
     ensure_claspignore "$target_dir"
@@ -235,10 +252,7 @@ bootstrap_dev_environment() {
   # 2. Deploy AppsUtilities
   log_info "Provisioning AppsUtilities standalone script..."
   mkdir -p "$SCRIPT_DIR/AppsUtilities"
-  (
-    cd "$SCRIPT_DIR/AppsUtilities" || exit 1
-    PATH="/opt/homebrew/opt/node@20/bin:$PATH" npx @google/clasp create --title "AppsUtilities [$env_name]" --type standalone --parentId "$parent_id"
-  )
+  create_clasp_project_safe "$SCRIPT_DIR/AppsUtilities" --title "AppsUtilities [$env_name]" --type standalone --parentId "$parent_id"
   check_clasp_project "$SCRIPT_DIR/AppsUtilities/.clasp.json" "AppsUtilities"
   
   local apps_utilities_id
@@ -267,10 +281,7 @@ bootstrap_dev_environment() {
 
   log_info "Provisioning FormsEngine standalone script..."
   mkdir -p "$SCRIPT_DIR/FormsEngine"
-  (
-    cd "$SCRIPT_DIR/FormsEngine" || exit 1
-    PATH="/opt/homebrew/opt/node@20/bin:$PATH" npx @google/clasp create --title "FormsEngine [$env_name]" --type standalone --parentId "$parent_id"
-  )
+  create_clasp_project_safe "$SCRIPT_DIR/FormsEngine" --title "FormsEngine [$env_name]" --type standalone --parentId "$parent_id"
   check_clasp_project "$SCRIPT_DIR/FormsEngine/.clasp.json" "FormsEngine"
   
   local forms_engine_id
@@ -301,10 +312,7 @@ bootstrap_dev_environment() {
 
   log_info "Provisioning BZQ Extension standalone script..."
   mkdir -p "$SCRIPT_DIR/extension_scaffold"
-  (
-    cd "$SCRIPT_DIR/extension_scaffold" || exit 1
-    PATH="/opt/homebrew/opt/node@20/bin:$PATH" npx @google/clasp create --title "BZQ Extension [$env_name]" --type standalone --parentId "$parent_id"
-  )
+  create_clasp_project_safe "$SCRIPT_DIR/extension_scaffold" --title "BZQ Extension [$env_name]" --type standalone --parentId "$parent_id"
   check_clasp_project "$SCRIPT_DIR/extension_scaffold/.clasp.json" "extension_scaffold"
   
   local extension_id
@@ -390,10 +398,7 @@ install_module() {
   # 3. Provision standalone script project if missing
   if [ ! -f "$SCRIPT_DIR/$module_name/.clasp.json" ]; then
     log_info "Provisioning $module_name standalone script..."
-    (
-      cd "$SCRIPT_DIR/$module_name" || exit 1
-      PATH="/opt/homebrew/opt/node@20/bin:$PATH" npx @google/clasp create --title "$module_name [$env_name]" --type standalone --parentId "$parent_id"
-    )
+    create_clasp_project_safe "$SCRIPT_DIR/$module_name" --title "$module_name [$env_name]" --type standalone --parentId "$parent_id"
     check_clasp_project "$SCRIPT_DIR/$module_name/.clasp.json" "$module_name"
   fi
 
