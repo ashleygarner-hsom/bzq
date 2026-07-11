@@ -126,6 +126,7 @@ function devBootstrapEnvironment() {
   const defaultSheet2 = newFormsSs.getSheetByName("Sheet1");
   if (defaultSheet2) newFormsSs.deleteSheet(defaultSheet2);
 
+  PropertiesService.getScriptProperties().setProperty("BZQ_ENV", envName);
   Logger.log("BZQ Dev Environment Seeding Completed Successfully!");
   Logger.log("Config ID: " + configId);
   Logger.log("Forms ID: " + formsId);

@@ -148,7 +148,9 @@ function handleSearchFolders(e) {
     .setHeader(CardService.newCardHeader().setTitle("BZQ Folder Selection"));
   const sec = CardService.newCardSection().setHeader(`Matching Folders for "${query}"`);
 
-  const searchStr = `mimeType = 'application/vnd.google-apps.folder' and name contains '${query.replace(/'/g, "\\'")}' and trashed = false`;
+  const escapedQuery = query.replace(/'/g, "\\'");
+  const searchStr = "mimeType = 'application/vnd.google-apps.folder' and " +
+    `title contains '${escapedQuery}' and trashed = false`;
   const folders = DriveApp.searchFolders(searchStr);
   let count = 0;
 

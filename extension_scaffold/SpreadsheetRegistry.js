@@ -3,36 +3,75 @@
  */
 class SpreadsheetRegistry {
   /**
-   * Scans Google Drive to locate the BZQ Tenant Configuration sheet.
-   * Checks script cache first to prevent repeated Drive API queries.
-   * @returns {string|null} The configuration spreadsheet ID, or null if not found.
+   * Auto-detects the active deployment environment name (e.g. 'LOCAL_ASHLEYGARNER-HSOM') 
+   * by parsing the containing script project's file name in Google Drive, falling back 
+   * to checking script properties or defaulting to production. This avoids manual property 
+   * setting during automated bootstrap deployments.
+   * @returns {string} The active environment identifier (e.g., 'PROD' or custom environment name),
+   *                  used to resolve the corresponding environment-suffixed configuration spreadsheet.
+   * @private
+   */
+  static getEnvName_() {
+    let env = PropertiesService.getScriptProperties().getProperty("BZQ_ENV");
+    if (!env) {
+      try {
+        const name = DriveApp.getFileById(ScriptApp.getScriptId()).getName();
+        const match = name.match(/\[(.*?)\]/);
+        env = match ? match[1] : "PROD";
+      } catch (ex) {
+        env = "PROD";
+      }
+    }
+    return env;
+  }
+
+  /**
+   * Searches the user's Google Drive for files matching a specific configuration name and
+   * filters out trashed files to return the ID of the most recently updated instance. This 
+   * ensures we always connect to the latest active configuration database sheet.
+   * @param {string} name - The exact file name of the configuration spreadsheet (e.g., 'BZQ Core Configuration').
+   *                        Used to lookup the specific sheet in Drive.
+   * @returns {string|null} The unique Google Drive file ID of the most recently modified sheet, 
+   *                        or null if no matching file exists in Drive.
+   * @private
+   */
+  static findLatestFileIdByName_(name) {
+    const files = DriveApp.getFilesByName(name);
+    let latestId = null;
+    let latestTime = 0;
+    while (files.hasNext()) {
+      const file = files.next();
+      if (file.isTrashed()) continue;
+      const time = file.getLastUpdated().getTime();
+      if (time > latestTime) {
+        latestTime = time;
+        latestId = file.getId();
+      }
+    }
+    return latestId;
+  }
+
+  /**
+   * Scans Google Drive to locate the BZQ Tenant Configuration spreadsheet.
+   * Resolves the configuration sheet by name using the current environment identifier,
+   * caching the resolved file ID in the Apps Script Script Cache to prevent excessive 
+   * Google Drive API search requests on subsequent executions.
+   * @returns {string|null} The unique spreadsheet ID for the BZQ configuration registry, 
+   *                        or null if the spreadsheet cannot be located in Drive.
    */
   static resolveConfigId() {
     const cache = CacheService.getScriptCache();
     const cachedId = cache.get("bzq_config_sheet_id");
     if (cachedId) return cachedId;
 
-    const env = PropertiesService.getScriptProperties().getProperty("BZQ_ENV") || "PROD";
-    const configName = env === "PROD" ? "BZQ Core Configuration" : `BZQ Core Configuration ${env}`;
+    const env = this.getEnvName_();
+    const name = env === "PROD" ? "BZQ Core Configuration" : `BZQ Core Configuration ${env}`;
+    const fileId = this.findLatestFileIdByName_(name);
 
-    const files = DriveApp.getFilesByName(configName);
-    let selectedFile = null;
-    let latestTime = 0;
-    while (files.hasNext()) {
-      const file = files.next();
-      if (file.isTrashed()) continue;
-      const modTime = file.getLastUpdated().getTime();
-      if (modTime > latestTime) {
-        latestTime = modTime;
-        selectedFile = file;
-      }
+    if (fileId) {
+      cache.put("bzq_config_sheet_id", fileId, 1500);
     }
-    if (selectedFile) {
-      const fileId = selectedFile.getId();
-      cache.put("bzq_config_sheet_id", fileId, 1500); // 25 minutes
-      return fileId;
-    }
-    return null;
+    return fileId;
   }
 
   /**
