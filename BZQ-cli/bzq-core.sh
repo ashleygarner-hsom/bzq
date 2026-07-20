@@ -233,6 +233,19 @@ check_clasp_project() {
   fi
 }
 
+# Generate local EnvConfig.js file before pushing
+write_env_config() {
+  local target_dir="$1"
+  local env_name="$2"
+  local parent_id="$3"
+  log_info "Generating 'EnvConfig.js' in '$target_dir'..."
+  cat << EOF > "$target_dir/EnvConfig.js"
+// Generated dynamically by ./bzq. DO NOT COMMIT TO GIT.
+const BZQ_ENV = "${env_name}";
+const BZQ_PARENT_FOLDER_ID = "${parent_id}";
+EOF
+}
+
 # Bootstrap a complete dev environment from scratch
 bootstrap_dev_environment() {
   local env_name="$1"
@@ -262,6 +275,7 @@ bootstrap_dev_environment() {
   log_info "Pushing AppsUtilities codebase..."
   (
     cd "$SCRIPT_DIR/AppsUtilities" || exit 1
+    write_env_config "$SCRIPT_DIR/AppsUtilities" "$env_name" "$parent_id"
     ensure_claspignore "$SCRIPT_DIR/AppsUtilities"
     PATH="/opt/homebrew/opt/node@20/bin:$PATH" npx @google/clasp push -f
     log_info "Deploying AppsUtilities version 1..."
@@ -291,6 +305,7 @@ bootstrap_dev_environment() {
   log_info "Pushing FormsEngine codebase..."
   (
     cd "$SCRIPT_DIR/FormsEngine" || exit 1
+    write_env_config "$SCRIPT_DIR/FormsEngine" "$env_name" "$parent_id"
     ensure_claspignore "$SCRIPT_DIR/FormsEngine"
     PATH="/opt/homebrew/opt/node@20/bin:$PATH" npx @google/clasp push -f
     log_info "Deploying FormsEngine version 1..."
@@ -322,6 +337,7 @@ bootstrap_dev_environment() {
   log_info "Pushing BZQ Extension codebase..."
   (
     cd "$SCRIPT_DIR/extension_scaffold" || exit 1
+    write_env_config "$SCRIPT_DIR/extension_scaffold" "$env_name" "$parent_id"
     ensure_claspignore "$SCRIPT_DIR/extension_scaffold"
     PATH="/opt/homebrew/opt/node@20/bin:$PATH" npx @google/clasp push -f
     log_info "Deploying BZQ Extension version 1..."
@@ -407,13 +423,14 @@ install_module() {
   log_success "$module_name Script ID: $script_id"
 
   # 4. Push module code
-  log_info "Pushing $module_name codebase..."
+  log_info "Pushing \$module_name codebase..."
   (
-    cd "$SCRIPT_DIR/$module_name" || exit 1
-    ensure_claspignore "$SCRIPT_DIR/$module_name"
-    PATH="/opt/homebrew/opt/node@20/bin:$PATH" npx @google/clasp push -f
-    log_info "Deploying $module_name version 1..."
-    PATH="/opt/homebrew/opt/node@20/bin:$PATH" npx @google/clasp deploy --description "Installed module v1"
+    cd "$SCRIPT_DIR/\$module_name" || exit 1
+    write_env_config "$SCRIPT_DIR/\$module_name" "$env_name" "$parent_id"
+    ensure_claspignore "$SCRIPT_DIR/\$module_name"
+    PATH="/opt/homebrew/opt/node@20/bin:\$PATH" npx @google/clasp push -f
+    log_info "Deploying \$module_name version 1..."
+    PATH="/opt/homebrew/opt/node@20/bin:\$PATH" npx @google/clasp deploy --description "Installed module v1"
   )
 
   # 5. Upsert seed data configuration

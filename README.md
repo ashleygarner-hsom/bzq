@@ -56,6 +56,30 @@ To clone an existing Google Sheets script project (for example, `AppsUtilities`)
 ```
 This initializes the directory, generates `.clasp.json`, downloads all your online `.gs` files as standard local `.js` files, and sets up a local `.claspignore` ruleset.
 
+### 4. Bootstrapping a Complete Local Environment
+If you are starting on a brand new development instance or preparing an environment for an agent to work, you can provision and seed a complete set of application workbooks and script projects in a single step.
+
+Create a parent folder in your Google Drive (e.g., `LOCAL_ASHLEYGARNER-HSOM`), copy its folder ID from the URL, and run:
+```bash
+./bzq bootstrap-dev LOCAL_ASHLEYGARNER-HSOM <DRIVE_FOLDER_ID>
+```
+This automatically:
+1. Deploys the standalone Apps Script files (`AppsUtilities`, `FormsEngine`, `extension_scaffold`) to your target folder in Google Drive.
+2. Dynamically creates a local, git-ignored `EnvConfig.js` mapping file in each workspace.
+3. Seeds your Google Drive with the necessary database spreadsheets (e.g., `BZQ Core Configuration LOCAL_ASHLEYGARNER-HSOM`) and configuration tables.
+
+---
+
+## 🧪 UI Testing & Browser Automation
+
+BZQ components are designed with testability in mind. To verify end-to-end user journeys (such as the BZQ Workspace Add-on sidebar, forms, and custom sheets interactions), both developers and AI agents should follow the browser-based test guidelines.
+
+Refer to the official [Testing & Browser Automation Standards](docs/TESTING_AND_BROWSER_AUTOMATION.md) for details on:
+- Navigating and testing within Workspace sidebars.
+- Simulating mobile viewport/emulated screen layout.
+- Accessing console log messages for error assertions.
+- Interface design standards for visual correctness and test coverage.
+
 ---
 
 ## 🤖 Developing and Deploying with Antigravity

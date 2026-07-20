@@ -13,17 +13,20 @@ class SpreadsheetRegistry {
    */
   static getEnvName_() {
     let env = PropertiesService.getScriptProperties().getProperty("BZQ_ENV");
-    if (!env) {
-      try {
-        const name = DriveApp.getFileById(ScriptApp.getScriptId()).getName();
-        const match = name.match(/\[(.*?)\]/);
-        env = match ? match[1] : "PROD";
-      } catch (ex) {
-        console.error("Failed to auto-detect environment name from script title: " + ex.message);
-        env = "PROD";
-      }
+    if (env) return env;
+
+    if (typeof BZQ_ENV !== "undefined" && BZQ_ENV) {
+      return BZQ_ENV;
     }
-    return env;
+
+    try {
+      const name = DriveApp.getFileById(ScriptApp.getScriptId()).getName();
+      const match = name.match(/\[(.*?)\]/);
+      return match ? match[1] : "PROD";
+    } catch (ex) {
+      console.error("Failed to auto-detect environment name: " + ex.message);
+      return "PROD";
+    }
   }
 
   /**

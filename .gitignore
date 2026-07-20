@@ -52,6 +52,7 @@ lerna-debug.log*
 # NOTE: We DO commit `.clasp.json` (project-script linkage) and `appsscript.json` (manifest).
 # We MUST ignore local credential files if they are ever exported or saved locally.
 .clasprc.json
+EnvConfig.js
 
 # IDE / Editor Configurations
 .vscode/

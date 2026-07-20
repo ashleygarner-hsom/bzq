@@ -3,8 +3,8 @@
  * Run this function directly from the Google Apps Script editor.
  */
 function devBootstrapEnvironment() {
-  const envName = "LOCAL_ASHLEYGARNER-HSOM";
-  const parentFolderId = "13n8-ylbfDFcu8ZGlB9JTTLP2crFVEj3J";
+  const envName = typeof BZQ_ENV !== "undefined" ? BZQ_ENV : "LOCAL_ASHLEYGARNER-HSOM";
+  const parentFolderId = typeof BZQ_PARENT_FOLDER_ID !== "undefined" ? BZQ_PARENT_FOLDER_ID : "13n8-ylbfDFcu8ZGlB9JTTLP2crFVEj3J";
   const legacyConfigId = "1SyMoGrqy7_JdQ2VbUwsv6ALvMmX9765mKZRJK8pYkew";
 
   Logger.log("Starting BZQ bootstrap for environment: " + envName);
