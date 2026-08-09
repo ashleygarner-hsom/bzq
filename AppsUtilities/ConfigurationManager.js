@@ -185,7 +185,7 @@ class ConfigurationManager {
   }
 
   /**
-   * Retrieves an object configuration record from __ObjectConfiguration.
+   * Retrieves an object configuration record from ObjectConfiguration.
    * Caches the returned record as a JSON string under both its Object Name and Datasheet Name.
    * @param {string} queryValue - Object Name or Datasheet Name.
    * @param {string} [queryBy='objectName'] - 'objectName', 'object', or 'datasheetName'.
@@ -261,7 +261,7 @@ class ConfigurationManager {
   }
 
   /**
-   * Retrieves an array of lookup configuration objects from __LookupConfiguration matching a Source Object.
+   * Retrieves an array of lookup configuration objects from LookupConfiguration matching a Source Object.
    * Caches the returned array as a JSON string.
    * @param {string} sourceObject - Source object name to query.
    * @returns {Object[]|null} Array of lookup configuration objects, or null if not found.
@@ -301,7 +301,7 @@ class ConfigurationManager {
   }
 
   /**
-   * Retrieves a single configuration record from __DropdownConfiguration matching a Dropdown Name and Object Name.
+   * Retrieves a single configuration record from DropdownConfiguration matching a Dropdown Name and Object Name.
    * Caches the returned record as a JSON string.
    * @param {string} dropdownName - Dropdown Name to query.
    * @param {string} objectName - Associated Object Name to query.
@@ -343,7 +343,7 @@ class ConfigurationManager {
   }
 
   /**
-   * Retrieves an array of dropdown configuration objects from __DropdownConfiguration matching an Object.
+   * Retrieves an array of dropdown configuration objects from DropdownConfiguration matching an Object.
    * Caches the returned array as a JSON string.
    * @param {string} objectName - Object name (full object string) to query.
    * @returns {Object[]|null} Array of dropdown configuration objects, or null if not found.
@@ -384,7 +384,7 @@ class ConfigurationManager {
   }
 
   /**
-   * Retrieves a single configuration record from __GlobalDropdownConfiguration matching a Global Dropdown Name.
+   * Retrieves a single configuration record from GlobalDropdownConfiguration matching a Global Dropdown Name.
    * Caches the returned record as a JSON string.
    * @param {string} globalDropdownName - Global Dropdown Name to query.
    * @returns {Object|null} Global Dropdown configuration object, or null if not found.
@@ -453,7 +453,7 @@ class ConfigurationManager {
   }
 
   /**
-   * Updates cached object configurations from the __ObjectConfiguration sheet.
+   * Updates cached object configurations from the ObjectConfiguration sheet.
    * @returns {void}
    */
   static updateCachedObjectConfigurations() {
@@ -487,7 +487,7 @@ class ConfigurationManager {
   }
 
   /**
-   * Updates cached lookup configurations from the __LookupConfiguration sheet.
+   * Updates cached lookup configurations from the LookupConfiguration sheet.
    * @returns {void}
    */
   static updateCachedLookupConfigurations() {
@@ -519,7 +519,7 @@ class ConfigurationManager {
   }
 
   /**
-   * Updates cached dropdown configurations from the __DropdownConfiguration sheet.
+   * Updates cached dropdown configurations from the DropdownConfiguration sheet.
    * @returns {void}
    */
   static updateCachedDropdownConfigurations() {
@@ -560,7 +560,7 @@ class ConfigurationManager {
   }
 
   /**
-   * Updates cached global dropdown configurations from the __GlobalDropdownConfiguration sheet.
+   * Updates cached global dropdown configurations from the GlobalDropdownConfiguration sheet.
    * @returns {void}
    */
   static updateCachedGlobalDropdownConfigurations() {

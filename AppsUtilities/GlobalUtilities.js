@@ -162,7 +162,7 @@ class GlobalUtilities {
     }
     
     const activeSpreadsheet = SpreadsheetApp.getActiveSpreadsheet();
-    const candidateNames = [`__${objectName}s`, `${objectName}s`, objectName];
+    const candidateNames = [`${objectName}s`, objectName];
     for (const name of candidateNames) {
       if (activeSpreadsheet.getSheetByName(name)) {
         return { spreadsheetId: activeSpreadsheet.getId(), sheetName: name, headerNumber: 1 };

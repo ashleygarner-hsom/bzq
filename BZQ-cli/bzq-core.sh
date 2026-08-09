@@ -248,8 +248,8 @@ EOF
 
 # Bootstrap a complete dev environment from scratch
 bootstrap_dev_environment() {
-  local env_name="$1"
-  local parent_id="$2"
+  local env_name=$(echo "$1" | tr -d '[:space:]')
+  local parent_id=$(echo "$2" | tr -d '[:space:]')
 
   log_banner
   log_info "STARTING COLD DEPLOY FOR DEV ENVIRONMENT: $env_name"
@@ -260,6 +260,7 @@ bootstrap_dev_environment() {
   log_info "Cleaning up existing clasp project associations..."
   rm -f "$SCRIPT_DIR/AppsUtilities/.clasp.json"
   rm -f "$SCRIPT_DIR/FormsEngine/.clasp.json"
+  rm -f "$SCRIPT_DIR/ModuleManager/.clasp.json"
   rm -f "$SCRIPT_DIR/extension_scaffold/.clasp.json"
 
   # 2. Deploy AppsUtilities
@@ -312,6 +313,36 @@ bootstrap_dev_environment() {
     PATH="/opt/homebrew/opt/node@20/bin:$PATH" npx @google/clasp deploy --description "Initial bootstrap v1"
   )
 
+  # 3b. Deploy ModuleManager
+  log_info "Updating ModuleManager library dependency to use: $apps_utilities_id"
+  node -e "
+    const fs = require('fs');
+    const path = '$SCRIPT_DIR/ModuleManager/appsscript.json';
+    const manifest = JSON.parse(fs.readFileSync(path, 'utf8'));
+    const lib = manifest.dependencies.libraries.find(l => l.userSymbol === 'AppsUtilities');
+    if (lib) lib.libraryId = '$apps_utilities_id';
+    fs.writeFileSync(path, JSON.stringify(manifest, null, 2));
+  "
+
+  log_info "Provisioning ModuleManager standalone script..."
+  mkdir -p "$SCRIPT_DIR/ModuleManager"
+  create_clasp_project_safe "$SCRIPT_DIR/ModuleManager" --title "ModuleManager [$env_name]" --type standalone --parentId "$parent_id"
+  check_clasp_project "$SCRIPT_DIR/ModuleManager/.clasp.json" "ModuleManager"
+  
+  local module_manager_id
+  module_manager_id=$(node -p "require('$SCRIPT_DIR/ModuleManager/.clasp.json').scriptId")
+  log_success "ModuleManager Script ID: $module_manager_id"
+
+  log_info "Pushing ModuleManager codebase..."
+  (
+    cd "$SCRIPT_DIR/ModuleManager" || exit 1
+    write_env_config "$SCRIPT_DIR/ModuleManager" "$env_name" "$parent_id"
+    ensure_claspignore "$SCRIPT_DIR/ModuleManager"
+    PATH="/opt/homebrew/opt/node@20/bin:$PATH" npx @google/clasp push -f
+    log_info "Deploying ModuleManager version 1..."
+    PATH="/opt/homebrew/opt/node@20/bin:$PATH" npx @google/clasp deploy --description "Initial bootstrap v1"
+  )
+
   # 4. Deploy extension_scaffold
   log_info "Updating extension_scaffold library dependencies..."
   node -e "
@@ -322,6 +353,8 @@ bootstrap_dev_environment() {
     if (libApps) libApps.libraryId = '$apps_utilities_id';
     const libForms = manifest.dependencies.libraries.find(l => l.userSymbol === 'FormsEngine');
     if (libForms) libForms.libraryId = '$forms_engine_id';
+    const libMod = manifest.dependencies.libraries.find(l => l.userSymbol === 'ModuleManager');
+    if (libMod) libMod.libraryId = '$module_manager_id';
     fs.writeFileSync(path, JSON.stringify(manifest, null, 2));
   "
 
@@ -346,7 +379,7 @@ bootstrap_dev_environment() {
 
   # 5. Provision and seed Spreadsheet databases
   log_info "Seeding configuration workbook databases..."
-  node "$SCRIPT_DIR/scripts/seed-sheets.js" "$env_name" "$parent_id" "$apps_utilities_id" "$forms_engine_id" "$extension_id"
+  node "$SCRIPT_DIR/scripts/seed-sheets.js" "$env_name" "$parent_id" "$apps_utilities_id" "$forms_engine_id" "$module_manager_id" "$extension_id"
   if [ $? -ne 0 ]; then
     log_error "Database seeding failed! Please inspect the terminal output for the exact Google Drive / Sheets API error."
     exit 1
@@ -361,9 +394,9 @@ bootstrap_dev_environment() {
 
 # Install and configure a single module on an existing environment
 install_module() {
-  local module_name="$1"
-  local env_name="$2"
-  local parent_id="$3"
+  local module_name=$(echo "$1" | tr -d '[:space:]')
+  local env_name=$(echo "$2" | tr -d '[:space:]')
+  local parent_id=$(echo "$3" | tr -d '[:space:]')
 
   if [ ! -d "$SCRIPT_DIR/$module_name" ]; then
     log_error "Module folder '$module_name' not found in repository."
@@ -382,6 +415,10 @@ install_module() {
   local forms_engine_id=""
   if [ -f "$SCRIPT_DIR/FormsEngine/.clasp.json" ]; then
     forms_engine_id=$(node -p "require('$SCRIPT_DIR/FormsEngine/.clasp.json').scriptId")
+  fi
+  local module_manager_id=""
+  if [ -f "$SCRIPT_DIR/ModuleManager/.clasp.json" ]; then
+    module_manager_id=$(node -p "require('$SCRIPT_DIR/ModuleManager/.clasp.json').scriptId")
   fi
 
   # 2. Update library dependencies in target module manifest if needed
@@ -435,7 +472,7 @@ install_module() {
 
   # 5. Upsert seed data configuration
   log_info "Upserting seed database configurations..."
-  node "$SCRIPT_DIR/scripts/seed-sheets.js" "$env_name" "$parent_id" "$apps_utilities_id" "$forms_engine_id" "$script_id" "--module=$module_name"
+  node "$SCRIPT_DIR/scripts/seed-sheets.js" "$env_name" "$parent_id" "$apps_utilities_id" "$forms_engine_id" "$module_manager_id" "$script_id" "--module=$module_name"
   if [ $? -ne 0 ]; then
     log_error "Database seeding failed for module $module_name!"
     exit 1

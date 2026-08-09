@@ -17,6 +17,7 @@ let envName = null;
 let parentId = null;
 let appsUtilitiesId = null;
 let formsEngineId = null;
+let moduleManagerId = null;
 let extensionId = null;
 let targetModule = null;
 let force = false;
@@ -34,17 +35,33 @@ process.argv.slice(2).forEach(arg => {
     appsUtilitiesId = arg;
   } else if (!formsEngineId) {
     formsEngineId = arg;
+  } else if (!moduleManagerId) {
+    moduleManagerId = arg;
   } else if (!extensionId) {
     extensionId = arg;
   }
 });
 
 if (!envName || !parentId) {
-  console.error('Usage: node seed-sheets.js <env-name> <parent-id> [apps-utils-id] [forms-id] [ext-id] [options]');
+  console.error('Usage: node seed-sheets.js <env-name> <parent-id> [apps-utils-id] [forms-id] [mod-manager-id] [ext-id] [options]');
   process.exit(1);
 }
 
 const REPO_DIR = path.join(__dirname, '..');
+
+const SYSTEM_SHEETS = [
+  'ConfigurationProperties',
+  'SequenceConfiguration',
+  'ObjectConfiguration',
+  'LookupConfiguration',
+  'DropdownConfiguration',
+  'GlobalDropdownConfiguration',
+  'Spreadsheets'
+];
+
+function isSystemSheet(sheetName) {
+  return SYSTEM_SHEETS.includes(sheetName) || sheetName.startsWith('__');
+}
 
 /**
  * Prompts the developer in the terminal using the readline interface.
@@ -177,6 +194,12 @@ async function getAccessToken() {
 const spreadsheetsRegistry = {};
 
 /**
+ * Global map tracking which spreadsheet friendly name each custom sheet belongs to.
+ * @type {Object<string, string>}
+ */
+const sheetToSpreadsheetMap = {};
+
+/**
  * Generates the spreadsheet title depending on environment conventions.
  * Non-production deployments automatically append the environment name suffix.
  * @param {string} baseName - Friendly spreadsheet name.
@@ -184,7 +207,8 @@ const spreadsheetsRegistry = {};
  * @returns {string} The formatted spreadsheet name.
  */
 function getSpreadsheetTitle(baseName, env) {
-  const base = baseName === 'Configuration' ? 'BZQ Core Configuration' : baseName;
+  let base = baseName === 'Configuration' ? 'BZQ Core Configuration' : baseName;
+  base = base.replace(/^xSS-\d+\s*-\s*/i, '').replace(/\s*Configuration\s*Properties$/i, '');
   const isProd = env.toUpperCase() === 'PROD' || env.toUpperCase() === 'PRODUCTION';
   return isProd ? base : `${base} ${env}`;
 }
@@ -248,6 +272,49 @@ async function ensureSheetExists(spreadsheetId, sheetName, headers) {
 }
 
 /**
+ * Resolves the target spreadsheet ID for a given sheet name.
+ * @param {string} sheetName - Target worksheet tab name.
+ * @param {Object} ctx - Options context.
+ * @param {Object} seedTemplates - Loaded templates.
+ * @returns {string} Target Google Spreadsheet file ID.
+ */
+function getTargetSpreadsheetId(sheetName, ctx, seedTemplates) {
+  if (isSystemSheet(sheetName)) {
+    return ctx.spreadsheets['${CONFIG_SS_ID}'];
+  }
+  const spokeName = sheetToSpreadsheetMap[sheetName];
+  if (spokeName && spreadsheetsRegistry[spokeName]) {
+    return spreadsheetsRegistry[spokeName];
+  }
+  return ctx.spreadsheets['${CONFIG_SS_ID}'];
+}
+
+/**
+ * Removes the default 'Sheet1' tab from all created/seeded spreadsheets.
+ * @param {Object} headers - Authorization headers.
+ * @returns {Promise<void>}
+ */
+async function deleteSheet1FromAll(headers) {
+  const uniqueIds = Array.from(new Set(Object.values(spreadsheetsRegistry)));
+  for (const spreadsheetId of uniqueIds) {
+    try {
+      const metadata = await makeRequest(`https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}`, { headers });
+      const sheet1 = metadata.sheets.find(s => s.properties.title === 'Sheet1');
+      if (sheet1 && metadata.sheets.length > 1) {
+        console.log(`Deleting default tab "Sheet1" from spreadsheet ${spreadsheetId}...`);
+        const body = { requests: [{ deleteSheet: { sheetId: sheet1.properties.sheetId } }] };
+        await makeRequest(`https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}:batchUpdate`, {
+          method: 'POST',
+          headers: { ...headers, 'Content-Type': 'application/json' }
+        }, body);
+      }
+    } catch (e) {
+      console.warn(`Could not delete Sheet1 from ${spreadsheetId}: ${e.message}`);
+    }
+  }
+}
+
+/**
  * Reads existing values from a spreadsheet tab.
  * @param {string} configId - The spreadsheet file ID.
  * @param {string} sheetName - The sheet name to read.
@@ -290,15 +357,30 @@ function appendSeedRows(merged, sheetName, rows) {
  */
 function loadMergedSeedData(targetModule) {
   const merged = {};
-  const modules = targetModule ? [targetModule] : ['AppsUtilities', 'FormsEngine', 'extension_scaffold'];
+  const modules = targetModule ? [targetModule] : ['AppsUtilities', 'FormsEngine', 'ModuleManager'];
   console.log(`Discovering modular seed configuration files (target: ${targetModule || 'all'})...`);
   modules.forEach(mod => {
     const seedPath = path.join(REPO_DIR, mod, 'seed-data.json');
     if (fs.existsSync(seedPath)) {
       console.log(`Found seed configuration payload: ${mod}/seed-data.json`);
       const data = JSON.parse(fs.readFileSync(seedPath, 'utf8'));
+      
+      let primarySpokeName = null;
+      const spreadsheetsList = data['Spreadsheets'] || data['__Spreadsheets'] || [];
+      if (spreadsheetsList.length > 1) {
+        const row = spreadsheetsList[1];
+        if (row[3] && String(row[3]).startsWith('${') && String(row[3]).endsWith('}')) {
+          primarySpokeName = String(row[2]).trim();
+        } else {
+          primarySpokeName = String(row[0]).trim();
+        }
+      }
+      
       for (const [sheetName, rows] of Object.entries(data)) {
         appendSeedRows(merged, sheetName, rows);
+        if (!isSystemSheet(sheetName) && primarySpokeName) {
+          sheetToSpreadsheetMap[sheetName] = primarySpokeName;
+        }
       }
     }
   });
@@ -322,10 +404,16 @@ async function configureSequences(sequenceConfig, ctx) {
       console.log(`Sequence "${row[2]}" already exists in configuration workbook. Skipping prompt.`);
       continue;
     }
-    console.log(`\nConfiguring Sequence: "${row[2]}"`);
-    const prefix = await askQuestion(`  Enter Sequence Prefix (default: ${defaultPrefix}): `) || defaultPrefix;
-    const startStr = await askQuestion(`  Enter Starting Number (default: ${defaultStart}): `);
-    const start = startStr ? parseInt(startStr) : defaultStart;
+    let prefix = defaultPrefix;
+    let start = defaultStart;
+    if (!force) {
+      console.log(`\nConfiguring Sequence: "${row[2]}"`);
+      prefix = await askQuestion(`  Enter Sequence Prefix (default: ${defaultPrefix}): `) || defaultPrefix;
+      const startStr = await askQuestion(`  Enter Starting Number (default: ${defaultStart}): `);
+      start = startStr ? parseInt(startStr) : defaultStart;
+    } else {
+      console.log(`Auto-configuring sequence "${row[2]}" with defaults.`);
+    }
     row[4] = prefix;
     row[5] = start;
     offsets[defaultPrefix] = {
@@ -386,6 +474,7 @@ function translateString(val, ctx) {
   }
   if (ctx.appsUtilitiesId) result = result.replace(/\$\{APPS_UTILITIES_SCRIPT_ID\}/g, ctx.appsUtilitiesId);
   if (ctx.formsEngineId) result = result.replace(/\$\{FORMS_ENGINE_SCRIPT_ID\}/g, ctx.formsEngineId);
+  if (ctx.moduleManagerId) result = result.replace(/\$\{MODULE_MANAGER_SCRIPT_ID\}/g, ctx.moduleManagerId);
   if (ctx.extensionId) result = result.replace(/\$\{EXTENSION_SCRIPT_ID\}/g, ctx.extensionId);
   for (const [prefix, conf] of Object.entries(ctx.sequenceOffsets)) {
     const regex = new RegExp(`${prefix.replace(/[-[\]{}()*+?.,\\^$|#\s]/g, '\\$&')}(\\d+)`, 'g');
@@ -404,12 +493,23 @@ function translateString(val, ctx) {
  * @param {Object} ctx - Seeding options context dictionary.
  */
 async function autoProvisionSpreadsheets(seedTemplates, ctx) {
-  const spreadsheetsList = seedTemplates['__Spreadsheets'] || [];
+  const spreadsheetsList = seedTemplates['Spreadsheets'] || seedTemplates['__Spreadsheets'] || [];
   for (let i = 1; i < spreadsheetsList.length; i++) {
     const row = spreadsheetsList[i];
-    const friendlyName = row[0];
-    const placeholder = row[1];
-    if (placeholder && placeholder.startsWith('${') && placeholder.endsWith('}')) {
+    let friendlyName = '';
+    let placeholder = '';
+    
+    // Check if using the modern schema (placeholder in index 3)
+    if (row[3] && String(row[3]).startsWith('${') && String(row[3]).endsWith('}')) {
+      friendlyName = String(row[2]).trim();
+      placeholder = String(row[3]).trim();
+    } else if (row[1] && String(row[1]).startsWith('${') && String(row[1]).endsWith('}')) {
+      // Fallback to legacy schema
+      friendlyName = String(row[0]).trim();
+      placeholder = String(row[1]).trim();
+    }
+    
+    if (placeholder && friendlyName) {
       const title = getSpreadsheetTitle(friendlyName, ctx.envName);
       let fileId = await locateExistingSpreadsheet(title, ctx.parentId, ctx.headers);
       if (!fileId) {
@@ -431,7 +531,7 @@ async function autoProvisionSpreadsheets(seedTemplates, ctx) {
 function getNewRowsToAppend(existingRows, seedRows, sheetName) {
   if (existingRows.length === 0) return seedRows;
   let keyIndex = 0;
-  if (['__SequenceConfiguration', '__ObjectConfiguration', '__LookupConfiguration'].includes(sheetName)) {
+  if (isSystemSheet(sheetName) && sheetName !== 'ConfigurationProperties' && sheetName !== '__ConfigurationProperties') {
     keyIndex = 1;
   }
   const existingKeys = new Set(existingRows.map(row => String(row[keyIndex] || '').trim()));
@@ -448,24 +548,35 @@ function getNewRowsToAppend(existingRows, seedRows, sheetName) {
  * @param {Object} ctx - Options context configuration dictionary.
  * @returns {Promise<void>}
  */
-async function seedSheetTable(sheetName, rows, ctx) {
-  const configId = ctx.spreadsheets['${CONFIG_SS_ID}'];
-  await ensureSheetExists(configId, sheetName, ctx.headers);
-  const existing = await fetchSheetValues(configId, sheetName, ctx.headers);
+async function seedSheetTable(sheetName, rows, ctx, seedTemplates) {
+  const targetId = getTargetSpreadsheetId(sheetName, ctx, seedTemplates);
+  await ensureSheetExists(targetId, sheetName, ctx.headers);
+  const existing = await fetchSheetValues(targetId, sheetName, ctx.headers);
   const newRows = getNewRowsToAppend(existing, rows, sheetName);
   if (newRows.length === 0) return;
   const translated = newRows.map(row => row.map(cell => translateString(cell, ctx)));
   translated.forEach(r => {
-    if (sheetName === '__Spreadsheets' && spreadsheetsRegistry[r[0]]) r[1] = spreadsheetsRegistry[r[0]];
-    if (sheetName === '__ObjectConfiguration') {
-      const k = Object.keys(ctx.spreadsheets).find(key => r[3].includes(key));
-      if (k) r[3] = ctx.spreadsheets[k];
+    if (sheetName === 'Spreadsheets' || sheetName === '__Spreadsheets') {
+      if (r.length >= 7) {
+        const friendlyName = String(r[2] || '').trim();
+        if (spreadsheetsRegistry[friendlyName]) {
+          r[3] = spreadsheetsRegistry[friendlyName];
+        }
+      } else if (spreadsheetsRegistry[r[0]]) {
+        r[1] = spreadsheetsRegistry[r[0]];
+      }
+    }
+    if (sheetName === 'ObjectConfiguration' || sheetName === '__ObjectConfiguration') {
+      const spreadsheetName = String(r[5] || '').trim();
+      if (spreadsheetsRegistry[spreadsheetName]) {
+        r[6] = spreadsheetsRegistry[spreadsheetName];
+      }
     }
   });
   const range = `${sheetName}!A${existing.length + 1}`;
-  console.log(`Writing ${translated.length} new rows to "${sheetName}" at ${range}...`);
+  console.log(`Writing ${translated.length} new rows to "${sheetName}" in spreadsheet ${targetId} at ${range}...`);
   await makeRequest(
-    `https://sheets.googleapis.com/v4/spreadsheets/${configId}/values/${encodeURIComponent(range)}?valueInputOption=USER_ENTERED`,
+    `https://sheets.googleapis.com/v4/spreadsheets/${targetId}/values/${encodeURIComponent(range)}?valueInputOption=USER_ENTERED`,
     { method: 'PUT', headers: { ...ctx.headers, 'Content-Type': 'application/json' } },
     { range, majorDimension: 'ROWS', values: translated }
   );
@@ -478,7 +589,7 @@ async function seedSheetTable(sheetName, rows, ctx) {
 async function main() {
   try {
     const seedTemplates = loadMergedSeedData(targetModule);
-    const sequenceConfig = seedTemplates['__SequenceConfiguration'] || [];
+    const sequenceConfig = seedTemplates['SequenceConfiguration'] || seedTemplates['__SequenceConfiguration'] || [];
     const token = await getAccessToken();
     const headers = { Authorization: `Bearer ${token}` };
     
@@ -495,12 +606,20 @@ async function main() {
     }
     
     const ctx = {
-      envName, parentId, appsUtilitiesId, formsEngineId, extensionId,
+      envName, parentId, appsUtilitiesId, formsEngineId, moduleManagerId, extensionId,
       headers, spreadsheets: {}, sequenceOffsets: {}
     };
     if (existingConfigId) {
       ctx.spreadsheets['${CONFIG_SS_ID}'] = existingConfigId;
-      ctx.existingSequences = await fetchSheetValues(existingConfigId, '__SequenceConfiguration', headers);
+      try {
+        ctx.existingSequences = await fetchSheetValues(existingConfigId, 'SequenceConfiguration', headers);
+      } catch (e) {
+        try {
+          ctx.existingSequences = await fetchSheetValues(existingConfigId, '__SequenceConfiguration', headers);
+        } catch (err) {
+          ctx.existingSequences = [];
+        }
+      }
     }
     if (sequenceConfig.length > 1) {
       console.log('\n====================================================');
@@ -513,9 +632,10 @@ async function main() {
     await autoProvisionSpreadsheets(seedTemplates, ctx);
     for (const [sheetName, rows] of Object.entries(seedTemplates)) {
       if (rows.length > 0) {
-        await seedSheetTable(sheetName, rows, ctx);
+        await seedSheetTable(sheetName, rows, ctx, seedTemplates);
       }
     }
+    await deleteSheet1FromAll(headers);
     console.log(`\n\x1b[32m✔ Configuration spreadsheets successfully seeded!\x1b[0m`);
   } catch (err) {
     console.error(`\x1b[31mError during seeding:\x1b[0m ${err.message}`);

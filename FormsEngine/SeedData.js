@@ -1,0 +1,266 @@
+/**
+ * Returns the embedded FormsEngine seed configuration payload.
+ * @returns {Object} Seeding configuration schema.
+ */
+function getSeedData_FormsEngine() {
+  return {
+    "ConfigurationProperties": [
+      [
+        "Configuration Key",
+        "Value",
+        "Notes"
+      ],
+      [
+        "FORMS_ENGINE_ENABLED",
+        true,
+        "Enables BZQ HTML Forms Engine layout parsing"
+      ]
+    ],
+    "SequenceConfiguration": [
+      [
+        "Sequence",
+        "Sequence Number",
+        "Sequence Name",
+        "Datasheet Name",
+        "Sequence Prefix",
+        "Starting Number",
+        "Format",
+        "Current Value",
+        "Enabled"
+      ],
+      [
+        "",
+        "xSC-10006",
+        "Forms",
+        "Forms",
+        "xFM-",
+        1000,
+        "000#",
+        1000,
+        true
+      ]
+    ],
+    "ObjectConfiguration": [
+      [
+        "Object",
+        "Object Number",
+        "Object Name",
+        "Datasheet",
+        "Enabled For Validation",
+        "Spreadsheet",
+        "Spreadsheet Id",
+        "Spreadsheet Url",
+        "Primary Fields",
+        "Id Field Name",
+        "Header Number",
+        "Sequence",
+        "Custom Line Trigger"
+      ],
+      [
+        "",
+        "xOC-1006",
+        "Form",
+        "Forms",
+        true,
+        "xSS-1001 - Forms Engine",
+        "${SPOKE_ID}",
+        "",
+        "Form Number",
+        "Form Number",
+        1,
+        "xSC-10006 - Forms",
+        ""
+      ]
+    ],
+    "LookupConfiguration": [
+      [
+        "Lookup",
+        "Lookup Number",
+        "Lookup Name",
+        "Source Object",
+        "Target Object",
+        "Column Name"
+      ],
+      [
+        "",
+        "xLC-10004",
+        "Form lookup to Object Name",
+        "xOC-1005 - Form",
+        "xOC-1001 - Object",
+        "Object Name"
+      ]
+    ],
+    "DropdownConfiguration": [
+      [
+        "Dropdown",
+        "Dropdown Number",
+        "Dropdown Name",
+        "Object",
+        "Values"
+      ],
+      [
+        "",
+        "xDC-10001",
+        "Form Enabled",
+        "xOC-1005 - Form",
+        "Yes, No"
+      ]
+    ],
+    "Spreadsheets": [
+      [
+        "Spreadsheet",
+        "Spreadsheet Number",
+        "Spreadsheet Name",
+        "Spreadsheet Id",
+        "Spreadsheet Url",
+        "Folder Path",
+        "Notes"
+      ],
+      [
+        "",
+        "xSS-1001",
+        "Forms Engine",
+        "${SPOKE_ID}",
+        "",
+        "/",
+        "Forms configuration repository and layout builder"
+      ]
+    ],
+    "Forms": [
+      [
+        "Form",
+        "Form Number",
+        "Form Name",
+        "Object Name",
+        "Enabled"
+      ],
+      [
+        "=ARRAYFORMULA(if(not(isblank(B2:B)),B2:B&\" - \"&C2:C,\"\"))",
+        "xFM-1000",
+        "New prospect",
+        "Prospect",
+        "Yes"
+      ],
+      [
+        "",
+        "xFM-1001",
+        "New customer",
+        "Customer",
+        "Yes"
+      ]
+    ],
+    "New prospect": [
+      [
+        "Field",
+        "Display name",
+        "Field type",
+        "Referenced object",
+        "Referenced dropdown config",
+        "Validation"
+      ],
+      [
+        "Prospect Number",
+        "Please provide contact details and all fields applicable",
+        "AUTOID"
+      ],
+      [
+        "Salesperson",
+        "Attributed sales person",
+        "LOOKUP",
+        "Sales Parties"
+      ],
+      [
+        "Customer",
+        "Linked customer - for existing customers",
+        "LOOKUP",
+        "Customers"
+      ],
+      [
+        "Prospect Name",
+        "Prospect name",
+        "TEXT"
+      ],
+      [
+        "Phone",
+        "Contact phone number",
+        "TEXT",
+        "",
+        "",
+        "PHONE"
+      ],
+      [
+        "Email",
+        "Contact email address",
+        "TEXT",
+        "",
+        "",
+        "EMAIL"
+      ],
+      [
+        "Est. Sale Date",
+        "Estimated date of sale",
+        "DATE"
+      ],
+      [
+        "Need By",
+        "Garments needed by date",
+        "DATE"
+      ],
+      [
+        "Purpose",
+        "Purpose of garments",
+        "TEXT"
+      ],
+      [
+        "Expected $",
+        "Expected Sale Amount",
+        "CURRENCY",
+        "",
+        "",
+        "USD"
+      ],
+      [
+        "Likelihood",
+        "Likelihood of sale",
+        "NUMBER",
+        "",
+        "",
+        "PERCENT"
+      ],
+      [
+        "Contact Notes",
+        "Contact Notes",
+        "TEXT"
+      ],
+      [
+        "Status",
+        "Current status of customer interaction?",
+        "LOOKUP",
+        "",
+        "BACKLOG_STATUS"
+      ],
+      [
+        "Stage",
+        "What is the current stage of the opportunity?",
+        "LOOKUP",
+        "",
+        "BACKLOG_STAGE"
+      ]
+    ],
+    "New customer": [
+      [
+        "Field",
+        "Display name",
+        "Field type",
+        "Referenced object",
+        "Referenced dropdown config",
+        "Validation"
+      ],
+      [
+        "Customer Number",
+        "Provide all available customer details",
+        "AUTOID"
+      ]
+    ]
+  };
+}

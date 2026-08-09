@@ -472,7 +472,7 @@ class ValidationContext {
         shortName = config["Object Name"];
       }
     } catch (e) {}
-    return `__${shortName}_Helper_Range`;
+    return `${shortName}_Helper_Range`;
   }
 
   /**
@@ -524,7 +524,7 @@ class ValidationContext {
     
     spreadsheetId = spreadsheetId ?? config["Spreadsheet Id"];
     sheetName = sheetName ?? config["Datasheet"];
-    if (sheetName && sheetName.startsWith('__') && sheetName.endsWith('_Helper_Range')) {
+    if (sheetName && sheetName.endsWith('_Helper_Range')) {
       return "A2:A";
     }
     

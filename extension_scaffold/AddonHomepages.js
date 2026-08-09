@@ -282,7 +282,7 @@ function handleShowBzqSheets(e) {
   
   const configId = SpreadsheetRegistry.resolveConfigId();
   const ss = SpreadsheetApp.openById(configId);
-  const registrySheet = ss.getSheetByName("__Spreadsheets");
+  const registrySheet = ss.getSheetByName("Spreadsheets");
   
   const section = CardService.newCardSection();
   
@@ -293,7 +293,7 @@ function handleShowBzqSheets(e) {
 
   // Load Grouped configurations using our record logic
   const spreadsheets = registrySheet.getRange(2, 1, registrySheet.getLastRow() - 1, registrySheet.getLastColumn()).getValues();
-  const objectsSheet = ss.getSheetByName("__ObjectConfiguration");
+  const objectsSheet = ss.getSheetByName("ObjectConfiguration");
   const objectsData = objectsSheet ? objectsSheet.getRange(2, 1, objectsSheet.getLastRow() - 1, objectsSheet.getLastColumn()).getValues() : [];
 
   spreadsheets.forEach(row => {
@@ -333,7 +333,7 @@ function buildSheetEntryFormsCard(configId, spreadsheetId) {
   const section = CardService.newCardSection().setHeader("Available Objects in Workbook");
 
   const ss = SpreadsheetApp.openById(configId);
-  const objectsSheet = ss.getSheetByName("__ObjectConfiguration");
+  const objectsSheet = ss.getSheetByName("ObjectConfiguration");
   if (!objectsSheet) {
     section.addWidget(CardService.newTextParagraph().setText("No object configurations resolved."));
     return card.addSection(section).build();

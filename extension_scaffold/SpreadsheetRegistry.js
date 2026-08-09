@@ -124,10 +124,10 @@ class SpreadsheetRegistry {
    */
   static initializeSchemaSheets_(ss) {
     const sheets = [
-      "__ConfigurationProperties", "__SequenceConfiguration",
-      "__ObjectConfiguration", "__LookupConfiguration",
-      "__DropdownConfiguration", "__GlobalDropdownConfiguration",
-      "__Spreadsheets"
+      "ConfigurationProperties", "SequenceConfiguration",
+      "ObjectConfiguration", "LookupConfiguration",
+      "DropdownConfiguration", "GlobalDropdownConfiguration",
+      "Spreadsheets"
     ];
     sheets.forEach(name => ss.insertSheet(name));
   }
@@ -169,7 +169,7 @@ class SpreadsheetRegistry {
     if (!configId) return false;
     
     const ss = SpreadsheetApp.openById(configId);
-    const sheet = ss.getSheetByName("__Spreadsheets");
+    const sheet = ss.getSheetByName("Spreadsheets");
     if (!sheet) return false;
     
     const data = sheet.getDataRange().getValues();

@@ -1,0 +1,15 @@
+{
+  "timeZone": "America/Chicago",
+  "dependencies": {
+    "libraries": [
+      {
+        "userSymbol": "AppsUtilities",
+        "version": "0",
+        "libraryId": "1goF2EuHzyh9XArsI1RC4kRvTEAd6BCreNXEg3CnoG6eTR2UXboXjvDKu",
+        "developmentMode": true
+      }
+    ]
+  },
+  "exceptionLogging": "STACKDRIVER",
+  "runtimeVersion": "V8"
+}
