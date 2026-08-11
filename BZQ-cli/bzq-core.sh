@@ -238,12 +238,24 @@ write_env_config() {
   local target_dir="$1"
   local env_name="$2"
   local parent_id="$3"
+  local apps_utilities_id="$4"
+  local forms_engine_id="$5"
+  local module_manager_id="$6"
   log_info "Generating 'EnvConfig.js' in '$target_dir'..."
   cat << EOF > "$target_dir/EnvConfig.js"
 // Generated dynamically by ./bzq. DO NOT COMMIT TO GIT.
 const BZQ_ENV = "${env_name}";
 const BZQ_PARENT_FOLDER_ID = "${parent_id}";
 EOF
+  if [ -n "$apps_utilities_id" ]; then
+    echo "const BZQ_APPS_UTILITIES_ID = \"${apps_utilities_id}\";" >> "$target_dir/EnvConfig.js"
+  fi
+  if [ -n "$forms_engine_id" ]; then
+    echo "const BZQ_FORMS_ENGINE_ID = \"${forms_engine_id}\";" >> "$target_dir/EnvConfig.js"
+  fi
+  if [ -n "$module_manager_id" ]; then
+    echo "const BZQ_MODULE_MANAGER_ID = \"${module_manager_id}\";" >> "$target_dir/EnvConfig.js"
+  fi
 }
 
 # Bootstrap a complete dev environment from scratch
@@ -370,7 +382,7 @@ bootstrap_dev_environment() {
   log_info "Pushing BZQ Extension codebase..."
   (
     cd "$SCRIPT_DIR/extension_scaffold" || exit 1
-    write_env_config "$SCRIPT_DIR/extension_scaffold" "$env_name" "$parent_id"
+    write_env_config "$SCRIPT_DIR/extension_scaffold" "$env_name" "$parent_id" "$apps_utilities_id" "$forms_engine_id" "$module_manager_id"
     ensure_claspignore "$SCRIPT_DIR/extension_scaffold"
     PATH="/opt/homebrew/opt/node@20/bin:$PATH" npx @google/clasp push -f
     log_info "Deploying BZQ Extension version 1..."

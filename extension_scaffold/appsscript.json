@@ -4,19 +4,19 @@
     "libraries": [
       {
         "userSymbol": "AppsUtilities",
-        "libraryId": "1goF2EuHzyh9XArsI1RC4kRvTEAd6BCreNXEg3CnoG6eTR2UXboXjvDKu",
+        "libraryId": "1DSx9_O1rtFCbRqQoIUTA4FhO2d3qlcIAIyhSvueDteOmqBeK7L_yelgd",
         "version": "1",
         "developmentMode": true
       },
       {
         "userSymbol": "FormsEngine",
-        "libraryId": "1INRdsxnmc_GHB7H0Gb9xoWz6xPiE-JtjfqtdCIals5qCZGpxDNyDfXA6",
+        "libraryId": "1QQ3kLISL_PTlS2R7MNxCUtL_u3pwDES1Rlga0G03wn6-OU3tyrojdz9C",
         "version": "1",
         "developmentMode": true
       },
       {
         "userSymbol": "ModuleManager",
-        "libraryId": "1vBPqfHEngJcmkrTHLUohG3ItErsrKN0oCYlFS17dWqVeXLMgMdQHjrex",
+        "libraryId": "17kQhz0bjYRQOnh63TdrT3Bw5_1Js76HNrsy8_WFzwmy0xpg3D1cErBig",
         "version": "1",
         "developmentMode": true
       }
@@ -31,6 +31,7 @@
     "https://www.googleapis.com/auth/drive.readonly",
     "https://www.googleapis.com/auth/script.external_request",
     "https://www.googleapis.com/auth/script.scriptapp",
+    "https://www.googleapis.com/auth/script.projects",
     "https://www.googleapis.com/auth/drive.addons.metadata.readonly",
     "https://www.googleapis.com/auth/script.locale"
   ],

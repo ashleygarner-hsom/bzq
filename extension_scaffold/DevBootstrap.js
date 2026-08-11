@@ -32,6 +32,11 @@ function bootstrapEnvironmentWithId_(envName, parentFolderId) {
   PropertiesService.getDocumentProperties().setProperty("BZQ_CONFIG_SS_ID", configId);
   PropertiesService.getDocumentProperties().setProperty("BZQ_FORMS_SS_ID", formsId);
 
+  // Auto-provision container-bound trigger scripts for local sheets
+  Logger.log("Provisioning container-bound trigger projects...");
+  SpreadsheetRegistry.ensureSpokeTriggers(configId);
+  SpreadsheetRegistry.ensureSpokeTriggers(formsId);
+
   Logger.log("BZQ Dev Environment Bootstrap Completed Successfully!");
   Logger.log("Config ID: " + configId);
   Logger.log("Forms ID: " + formsId);

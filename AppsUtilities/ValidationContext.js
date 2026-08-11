@@ -524,15 +524,19 @@ class ValidationContext {
     
     spreadsheetId = spreadsheetId ?? config["Spreadsheet Id"];
     sheetName = sheetName ?? config["Datasheet"];
+    const ss = SpreadsheetApp.openById(spreadsheetId);
+    const sh = ss.getSheetByName(sheetName);
+    const lastRow = sh ? Math.max(2, sh.getLastRow()) : 1000;
+
     if (sheetName && sheetName.endsWith('_Helper_Range')) {
-      return "A2:A";
+      return `A2:A${lastRow}`;
     }
     
     const headerNum = Number(config["Header Number"]) || 1;
     const shortName = config["Object Name"];
-    const primaryColumnIndex = GlobalUtilities.getColumnIndexOnSheet({ spreadsheetId, sheetName }, shortName, headerNum);
-    const primaryColumnLetter = GlobalUtilities.getColumnLetter(spreadsheetId, sheetName, primaryColumnIndex);
-    return `${primaryColumnLetter}${headerNum}:${primaryColumnLetter}`;
+    const primaryCol = GlobalUtilities.getColumnIndexOnSheet({ spreadsheetId, sheetName }, shortName, headerNum);
+    const primaryLetter = GlobalUtilities.getColumnLetter(spreadsheetId, sheetName, primaryCol);
+    return `${primaryLetter}${headerNum + 1}:${primaryLetter}${lastRow}`;
   }
 
   /**

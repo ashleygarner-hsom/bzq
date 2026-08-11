@@ -67,20 +67,31 @@ class SpreadsheetRegistry {
    */
   static findConfigIdForEnv_(env) {
     const exactName = env === "PROD" ? "BZQ Core Configuration" : `BZQ Core Configuration ${env}`;
+    const parentId = typeof BZQ_PARENT_FOLDER_ID !== "undefined" ? BZQ_PARENT_FOLDER_ID : "";
+    if (parentId) {
+      const inFolderId = this.locateConfigInFolder_(parentId, exactName);
+      if (inFolderId) return inFolderId;
+    }
     const exactId = this.findLatestFileIdByName_(exactName);
     if (exactId) return exactId;
 
-    if (env === "PROD") {
-      const query = "title contains 'BZQ Core Configuration' and " +
-        "mimeType = 'application/vnd.google-apps.spreadsheet' and trashed = false";
-      const files = DriveApp.searchFiles(query);
-      const results = [];
-      while (files.hasNext()) {
-        results.push(files.next());
-      }
-      if (results.length === 1) return results[0].getId();
+    return env === "PROD" ? this.searchProdConfig_() : null;
+  }
+
+  /**
+   * Performs a single-match lookup for production configuration files in Drive.
+   * @returns {string|null} The resolved file ID or null if ambiguous.
+   * @private
+   */
+  static searchProdConfig_() {
+    const query = "title contains 'BZQ Core Configuration' and " +
+      "mimeType = 'application/vnd.google-apps.spreadsheet' and trashed = false";
+    const files = DriveApp.searchFiles(query);
+    const results = [];
+    while (files.hasNext()) {
+      results.push(files.next());
     }
-    return null;
+    return results.length === 1 ? results[0].getId() : null;
   }
 
   static resolveConfigId() {
@@ -213,10 +224,7 @@ class SpreadsheetRegistry {
    */
   static provisionSpokeWorkbook(name, parentFolderId) {
     const ssId = this.locateOrCreateSpokeFile_(name, parentFolderId);
-    const scriptId = this.getBoundScriptId_(ssId);
-    if (scriptId) {
-      this.injectBootstrapper_(scriptId);
-    }
+    this.ensureSpokeTriggers(ssId);
     return ssId;
   }
 
@@ -247,50 +255,150 @@ class SpreadsheetRegistry {
   }
 
   /**
-   * Resolves the container-bound script ID of a spreadsheet using Drive search.
+   * Resolves the container-bound script ID of a spreadsheet using Developer Metadata.
    * @param {string} spreadsheetId - Active spreadsheet ID.
    * @returns {string|null} Script ID, or null if no bound script container found.
    * @private
    */
   static getBoundScriptId_(spreadsheetId) {
-    const query = `'${spreadsheetId}' in parents and mimeType = 'application/vnd.google-apps.script'`;
-    const files = DriveApp.searchFiles(query);
-    return files.hasNext() ? files.next().getId() : null;
+    try {
+      const ss = SpreadsheetApp.openById(spreadsheetId);
+      const meta = ss.getDeveloperMetadata();
+      const found = meta.find(m => m.getKey() === "bzq_bound_script_id");
+      return found ? found.getValue() : null;
+    } catch (e) {
+      return null;
+    }
+  }
+
+  /**
+   * Ensures that a managed spreadsheet contains a bound script triggers project.
+   * Self-heals/creates the project if missing, then updates its triggers.
+   * @param {string} spreadsheetId - Target Google Spreadsheet ID.
+   * @returns {string} Bound script ID.
+   */
+  static ensureSpokeTriggers(spreadsheetId) {
+    let scriptId = this.getBoundScriptId_(spreadsheetId);
+    if (!scriptId) {
+      const ss = SpreadsheetApp.openById(spreadsheetId);
+      scriptId = this.createBoundScript_(spreadsheetId, ss.getName() + " Bound Script");
+      this.saveBoundScriptId_(ss, scriptId);
+    }
+    if (scriptId) {
+      this.injectBootstrapper_(scriptId);
+    }
+    return scriptId;
+  }
+
+  /**
+   * Attaches the bound script ID as developer metadata on the spreadsheet file.
+   * @param {SpreadsheetApp.Spreadsheet} ss - Target spreadsheet.
+   * @param {string|null} scriptId - Script ID.
+   * @private
+   */
+  static saveBoundScriptId_(ss, scriptId) {
+    if (!scriptId) return;
+    try {
+      ss.addDeveloperMetadata("bzq_bound_script_id", scriptId, SpreadsheetApp.DeveloperMetadataVisibility.DOCUMENT);
+    } catch (e) {
+      console.error("Failed to write developer metadata: " + e.message);
+    }
+  }
+
+  /**
+   * Creates a container-bound script project for the target spreadsheet.
+   * @param {string} spreadsheetId - Parent spreadsheet ID.
+   * @param {string} title - Friendly title for the script project.
+   * @returns {string} The created Apps Script project ID.
+   * @private
+   */
+  static createBoundScript_(spreadsheetId, title) {
+    const url = "https://script.googleapis.com/v1/projects";
+    const payload = {
+      title: title,
+      parentId: spreadsheetId
+    };
+    const response = UrlFetchApp.fetch(url, {
+      method: "POST",
+      headers: { Authorization: "Bearer " + ScriptApp.getOAuthToken() },
+      contentType: "application/json",
+      payload: JSON.stringify(payload)
+    });
+    const result = JSON.parse(response.getContentText());
+    return result.scriptId;
   }
 
   /**
    * Injects the static triggers.js bootstrapper into the target container script.
-   * Uses Google Apps Script REST API projects.updateContent.
    * @param {string} scriptId - Target Apps Script project container ID.
    * @returns {void}
    * @private
    */
   static injectBootstrapper_(scriptId) {
     const url = `https://script.googleapis.com/v1/projects/${scriptId}/content`;
-    const triggerSource = "function onOpen(e) { AppsUtilities.onOpen(this); }\nfunction onEdit(e) { AppsUtilities.onEdit(e); }";
-    const payload = {
-      files: [
-        { name: "Triggers", type: "SERVER_JS", source: triggerSource },
-        { name: "appsscript", type: "JSON", source: JSON.stringify({
-          timeZone: "America/New_York",
-          dependencies: {
-            libraries: [{
-              userSymbol: "AppsUtilities",
-              libraryId: "1KsqYmH746evWxO20E850u_JFcUlRZW-jQsTz5CY7m-UpriQXNa8_xYnY",
-              version: "1",
-              developmentMode: true
-            }]
-          },
-          exceptionLogging: "STACKDRIVER"
-        })}
-      ]
-    };
+    const payload = this.getBootstrapperPayload_();
     UrlFetchApp.fetch(url, {
       method: "PUT",
       headers: { Authorization: "Bearer " + ScriptApp.getOAuthToken() },
       contentType: "application/json",
       payload: JSON.stringify(payload)
     });
+  }
+
+  /**
+   * Builds the identical container-bound script files array payload.
+   * @returns {Object} JSON files array.
+   * @private
+   */
+  static getBootstrapperPayload_() {
+    const appsUtilitiesLibId = typeof BZQ_APPS_UTILITIES_ID !== "undefined"
+      ? BZQ_APPS_UTILITIES_ID
+      : "1CA8gHQERZVfscjg57JFohV0yih0iY7L0RB8swaKrI-RIPEMZWUx4m3FS";
+    const formsEngineLibId = typeof BZQ_FORMS_ENGINE_ID !== "undefined"
+      ? BZQ_FORMS_ENGINE_ID
+      : "1HucXDble404_cRjXs0BOfsNsXqXzsu5e8d1mjn85Qpy4RrTvfgz9CYlT";
+    const moduleManagerLibId = typeof BZQ_MODULE_MANAGER_ID !== "undefined"
+      ? BZQ_MODULE_MANAGER_ID
+      : "1BYaOu7n4ronLM28iOvHDGPBjjfdykchy-zBLqniLoDqgWdn5ba490WdF";
+
+    const triggerSourceLines = [
+      "function onOpen() { AppsUtilities.onOpen(this); }",
+      "function onEdit(e) { AppsUtilities.onEdit(e); }",
+      "function appInit_setupInstallableTrigger() { AppsUtilities.appInit_setupInstallableTrigger(); }",
+      "function appInit_onOpenInstallable(e) { AppsUtilities.appInit_onOpenInstallable(e); }",
+      "function appInit_onEditInstallable(e) { AppsUtilities.appInit_onEditInstallable(e); }",
+      "function appInit_getLogoUrl() { return AppsUtilities.appInit_getLogoUrl(); }",
+      "function appInit_updateCache() { return AppsUtilities.appInit_updateCache(); }",
+      "function appInit_preCacheObjects() { return AppsUtilities.appInit_preCacheObjects(); }",
+      "function appInit_createMenus() { return AppsUtilities.appInit_createMenus(this); }",
+      "function triggerAddRecordToActivePage() { AppsUtilities.triggerAddRecordToActivePage(); }",
+      "function triggerValidateSelectedRows() { AppsUtilities.triggerValidateSelectedRows(); }",
+      "function triggerResetConfigurationCache() { AppsUtilities.triggerResetConfigurationCache(); }",
+      "function triggerSetHeaderFormat() { AppsUtilities.triggerSetHeaderFormat(); }",
+      "function triggerSetRecordFormat() { AppsUtilities.triggerSetRecordFormat(); }",
+      "function triggerApplyHeaderFormat() { AppsUtilities.triggerApplyHeaderFormat(); }",
+      "function triggerApplyRecordFormat() { AppsUtilities.triggerApplyRecordFormat(); }",
+      "function BZQ_CACHE_VERSION() { return AppsUtilities.BZQ_CACHE_VERSION(); }",
+      "function BZQ_GET_OBJECT_VALUE(objectName, recordId, fieldName, cacheBuster) { return AppsUtilities.BZQ_GET_OBJECT_VALUE(objectName, recordId, fieldName, cacheBuster); }"
+    ];
+    const triggerSource = triggerSourceLines.join("\n");
+    return {
+      files: [
+        { name: "Triggers", type: "SERVER_JS", source: triggerSource },
+        { name: "appsscript", type: "JSON", source: JSON.stringify({
+          timeZone: "America/New_York",
+          runtimeVersion: "V8",
+          dependencies: {
+            libraries: [
+              { userSymbol: "AppsUtilities", libraryId: appsUtilitiesLibId, version: "1", developmentMode: true },
+              { userSymbol: "FormsEngine", libraryId: formsEngineLibId, version: "1", developmentMode: true },
+              { userSymbol: "ModuleManager", libraryId: moduleManagerLibId, version: "1", developmentMode: true }
+            ]
+          },
+          exceptionLogging: "STACKDRIVER"
+        })}
+      ]
+    };
   }
 
   /**

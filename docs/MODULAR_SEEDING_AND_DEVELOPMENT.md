@@ -1,6 +1,6 @@
 # BZQ Modular Development & Seeding Framework Guide
 
-This guide describes how to develop new code modules (projects) for the BZQ platform, configure their seed data, and authenticate the deployment and seeding utility.
+This guide describes how to develop new code modules (projects) for the BZQ platform, configure their seed data using our **Namespaced Stable ID Seeding** architecture, and manage environmental deployment.
 
 ---
 
@@ -27,26 +27,62 @@ If `service-account.json` is missing, the tool falls back to the local developer
 
 ---
 
-## 2. Dynamic Modular Seeding & Spoke Routing Engine
+## 2. Namespaced Stable ID Seeding Architecture
 
-To keep the codebase modular, each BZQ module (Apps Script project) manages its own schema definitions and seed data records. When running the installation wizard, the platform automatically parses, merges, and routes these schemas dynamically.
+To keep the platform robust, extensible, and upgradable, BZQ modules are fully compiled and seeded using schema-driven App Script metadata files: `Objects.js` and `Data.js`. This architecture separates object schemas from row data records, guaranteeing zero data loss during package updates and localizations.
 
-### Dynamic Merging
-The seeding script (`scripts/seed-sheets.js`) scans the active code directories (like `AppsUtilities`, `FormsEngine`, and `ModuleManager`), parsing each of their local `seed-data.json` configuration payloads and combining them into a unified memory map.
+### A. Object Definitions (`Objects.js`)
+Each BZQ module declares its managed business objects in an `Objects.js` file, assigning a unique, permanent `StableId` integer:
 
-### Spoke Target Resolution (`sheetToSpreadsheetMap`)
-Instead of dump-seeding all custom sheets into the master Configuration workbook, the engine dynamically determines where each non-system sheet should reside:
-1. **Discovery**: As `loadMergedSeedData` merges the `seed-data.json` payloads, it inspects the module's `Spreadsheets` configuration section.
-2. **Mapping**: The primary spoke workbook name (e.g. `Forms Engine` or `Module Manager`) is mapped to all custom non-system tabs (those not listed as system sheets) declared in that module's configuration.
-3. **Target Routing**: When `getTargetSpreadsheetId` is invoked to write a sheet tab (e.g. `New prospect`), it automatically queries `sheetToSpreadsheetMap`. If a mapping is found, it writes directly to that dedicated spoke's Google Spreadsheet ID, falling back to the master Core Configuration spreadsheet only for system tables.
+```javascript
+// AppsUtilities/Objects.js
+function getObjects_AppsUtilities() {
+  return [
+    { Name: "Sequence", StableId: 1000, Datasheet: "SequenceConfiguration" },
+    { Name: "Object", StableId: 1001, Datasheet: "ObjectConfiguration" },
+    { Name: "Lookup", StableId: 1002, Datasheet: "LookupConfiguration" }
+  ];
+}
+```
 
-### Clean Spreadsheet Naming Convention
-To keep the workspace clean, the engine automatically normalizes spreadsheet names:
-* Normalizes lookup strings by stripping sequence prefixes (such as `xSS-0006 - `) and configuration suffixes (such as ` Configuration Properties`).
-* Automatically appends the target environment suffix (e.g. `Module Manager` becomes `Module Manager LOCAL_ASHLEYGARNER-HSOM`).
+### B. Seed Records (`Data.js`)
+All seed data rows are configured as structured key-value maps inside `Data.js`, keyed by their stringified `StableId`:
 
-### Post-Seed Tab Cleanup
-When Google Sheets initializes a new workbook, it creates a default empty tab named `"Sheet1"`. The seeding engine automatically runs a post-seed cleanup batch update (`deleteSheet1FromAll`) to find and delete `"Sheet1"` from all created workbooks once custom seeded tables have been successfully established.
+```javascript
+// AppsUtilities/Data.js
+function getSeedData_AppsUtilities() {
+  return {
+    "1000": [ // SequenceConfiguration
+      {
+        "Sequence Name": "Sequence",
+        "Datasheet Name": "SequenceConfiguration",
+        "Sequence Prefix": "xSC-",
+        "Starting Number": 10000,
+        "Format": "0000#",
+        "Current Value": 10000,
+        "Enabled": true
+      }
+    ],
+    "1001": [ // ObjectConfiguration
+      {
+        "Object Name": "Sequence",
+        "Datasheet": "SequenceConfiguration",
+        "Enabled For Validation": true,
+        "Spreadsheet": "AppsUtilities.1005.1",
+        "Id Field Name": "Sequence Number",
+        "Header Number": 1,
+        "Sequence": "AppsUtilities.1000.1"
+      }
+    ]
+  };
+}
+```
+
+### C. Delta Seeding & Schema Extensions
+The seeding engine supports **Delta Seeding**. Downstream modules (like `FormsEngine`) can append new fields/columns and update rows on upstream objects (like those in `AppsUtilities`) by specifying namespaced stable ID keys:
+
+* **Append Schema Columns**: If a downstream seed record introduces a new column (e.g., `"Default Form"`), the compiler dynamically appends that header to the first row of the physical worksheet.
+* **Preserve Calculated Columns**: Any field omitted in a seed row object (such as formulas calculated via `=ARRAYFORMULA(...)`) is preserved and completely untouched, preventing formula corruption.
 
 ---
 
@@ -162,41 +198,28 @@ Lists global key-value arrays available organization-wide across all worksheets.
 
 ## 4. The Lookup & Relationship Engine
 
-Because sequence starting numbers and prefixes are customized at runtime during the installation wizard, all relationship links and lookups must be resolved dynamically.
+Because sequence starting numbers are generated dynamically during environmental setup, all cross-module relationship links and sequence mappings must be resolved at compiler execution time.
 
-### How Lookups Work
-In Google Sheets, tables reference other tables using key formatting. For example, a Sequence row has the ID `xSC-10000`, and a separate Object Configuration references it by that exact ID.
+### A. Dot-Notation Row References
+To map lookups or dependencies in seed files, use our **Namespaced Dot-Notation Indexing** pattern:
+`{ModuleName}.{StableId}.{Index}`
 
-If the installer shifts the sequence start number to `50000`, the hardcoded references in other tables must also shift to maintain database integrity!
+* **Example (Index-Based)**:
+  `"AppsUtilities.1001.2"` refers to the 2nd record of stable ID `1001` (Object) defined inside `AppsUtilities`.
+  At compile-time, the engine automatically calculates its sequence ID (e.g., `"xOC-1001"`) and converts it to its fully combined descriptor `"xOC-1001 - Object"` seamlessly!
 
-### How to Use Lookups in Seed Files
-When writing your module's `seed-data.json`, do not guess what final ID a record will receive. Instead, use the **Template Default ID** (e.g. index-based `00001` or absolute `10000` matching the template starting number):
+### B. Query-Based Filtering
+For highly resilient references that survive sorting or item additions, use the **Query-Based Filter** pattern:
+`{ModuleName}.{StableId}.filter({FieldName} == "{Value}")`
 
-* **Example: Referencing Sequences in Objects**:
-  If `AppsUtilities/seed-data.json` defines the `Sequence` configurations:
-  ```json
-  "SequenceConfiguration": [
-    ["Sequence", "Sequence Number", "Sequence Name", ...],
-    ["", "xSC-00001", "Sequence", ...],
-    ["", "xSC-00002", "Objects", ...]
-  ]
-  ```
-  And you want to link an Object Configuration to the `Objects` sequence, use `xSC-00002` in that row:
-  ```json
-  "ObjectConfiguration": [
-    ["Object", "Object Number", "Object Name", ...],
-    ["", "", "MyNewObject", "MyTab", true, "Spoke", "${SPOKE_ID}", "", "My Field", "My Number", 1, "xSC-00002", ""]
-  ]
-  ```
+* **Example (Filter-Based)**:
+  `"AppsUtilities.1005.filter(Spreadsheet Name == \"Forms Engine\")"`
+  The compiler scans the pre-compiled registry of `AppsUtilities.1005` (Spreadsheets), locates the exact row where `"Spreadsheet Name"` matches `"Forms Engine"`, and resolves it directly to `"xSS-1001 - Forms Engine"`!
 
-### The Translation Algorithm
-During installation, the engine maps the custom starting numbers you chose:
-1. **Identify the Offset**: `offset = Custom Start - Default Start`.
-2. **Translate References**: The engine scans every cell value. If it matches a sequence prefix:
-   * **Index-Based IDs** (e.g., `xSC-00002`): Translates to `customStart + 2 - 1 = 50001` (formatted as `xSC-50001`).
-   * **Absolute IDs** (e.g., `xSC-10002`): Translates to `customStart + (10002 - 10000) = 50002` (formatted as `xSC-50002`).
-
-This ensures all lookup relations and formulas (e.g., `=importrange` references or combined ID columns) are correctly adjusted at runtime.
+### C. Seeding Engine Safety & Strictness Rules
+To prevent data contamination or silent sequence corruption, `ModuleManager` enforces strict compile-time checks:
+1. **Duplicate StableId Rejection**: If any duplicate StableId definitions are discovered within a single module's `Objects.js`, compilation fails instantly.
+2. **Explicit Sequence ID Rejection**: Seed row objects in `Data.js` must **NEVER** contain hardcoded sequence IDs (e.g., `"xOC-1000"`). If the engine detects an explicit sequence prefix in an ID column, it immediately throws an error and rejects the execution.
 
 ---
 
