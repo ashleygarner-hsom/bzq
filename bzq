@@ -30,7 +30,11 @@ show_help() {
   echo -e "  ${BOLD}deploy <folder> [description]${NC}          Create a new versioned deployment of the project."
   echo -e "  ${BOLD}status <folder>${NC}                        Check local/remote sync status of files."
   echo -e "  ${BOLD}link-gcp <folder> <project-id>${NC}        Link the script project to a Google Cloud Project."
-  echo -e "  ${BOLD}bootstrap-dev <env-name> <parent-id>${NC}  Deploy a complete fresh dev environment with seeded data."
+  echo -e "  ${BOLD}bootstrap-dev <env-name> <parent-id> [project-number]${NC}  Deploy a complete fresh dev environment with seeded data."
+  echo -e "  ${BOLD}deploy-core <env-name> <parent-id>${NC}    Deploy central script modules without seeding or GCP projects."
+  echo -e "  ${BOLD}link-gcp-all <env-name> <project-num>${NC} Associate central script modules with a GCP project."
+  echo -e "  ${BOLD}seed-db <env-name> <parent-id> [project-num]${NC} Run database seeding and configuration setup worksheets."
+  echo -e "  ${BOLD}create-spoke <name> <env> <parent-id> [num]${NC}  Provision a single Spoke spreadsheet and bound script triggers."
   echo -e "  ${BOLD}install-module <module-name> <env-name> <parent-id>${NC} Install/configure a module on an existing environment."
   echo ""
   echo -e "${BOLD}PULL OPTIONS:${NC}"
@@ -453,10 +457,50 @@ case "$COMMAND" in
   bootstrap-dev)
     ENV_NAME="$1"
     PARENT_ID="$2"
+    PROJECT_NUMBER="$3"
     if [ -z "$ENV_NAME" ] || [ -z "$PARENT_ID" ]; then
-      log_error "Usage: ./bzq bootstrap-dev <env-name> <parent-folder-id>"
+      log_error "Usage: ./bzq bootstrap-dev <env-name> <parent-folder-id> [project-number]"
     fi
-    bootstrap_dev_environment "$ENV_NAME" "$PARENT_ID"
+    bootstrap_dev_environment "$ENV_NAME" "$PARENT_ID" "$PROJECT_NUMBER"
+    ;;
+
+  deploy-core)
+    ENV_NAME="$1"
+    PARENT_ID="$2"
+    if [ -z "$ENV_NAME" ] || [ -z "$PARENT_ID" ]; then
+      log_error "Usage: ./bzq deploy-core <env-name> <parent-folder-id>"
+    fi
+    deploy_core "$ENV_NAME" "$PARENT_ID"
+    ;;
+
+  link-gcp-all)
+    ENV_NAME="$1"
+    PROJECT_NUMBER="$2"
+    if [ -z "$ENV_NAME" ] || [ -z "$PROJECT_NUMBER" ]; then
+      log_error "Usage: ./bzq link-gcp-all <env-name> <project-number>"
+    fi
+    link_gcp_all "$ENV_NAME" "$PROJECT_NUMBER"
+    ;;
+
+  seed-db)
+    ENV_NAME="$1"
+    PARENT_ID="$2"
+    PROJECT_NUMBER="$3"
+    if [ -z "$ENV_NAME" ] || [ -z "$PARENT_ID" ]; then
+      log_error "Usage: ./bzq seed-db <env-name> <parent-folder-id> [project-number]"
+    fi
+    seed_db "$ENV_NAME" "$PARENT_ID" "$PROJECT_NUMBER"
+    ;;
+
+  create-spoke)
+    SPOKE_NAME="$1"
+    ENV_NAME="$2"
+    PARENT_ID="$3"
+    PROJECT_NUMBER="$4"
+    if [ -z "$SPOKE_NAME" ] || [ -z "$ENV_NAME" ] || [ -z "$PARENT_ID" ]; then
+      log_error "Usage: ./bzq create-spoke <spoke-name> <env-name> <parent-folder-id> [project-number]"
+    fi
+    node "$SCRIPT_DIR/scripts/create-spoke.js" "$SPOKE_NAME" "$ENV_NAME" "$PARENT_ID" "$PROJECT_NUMBER"
     ;;
 
   install-module)

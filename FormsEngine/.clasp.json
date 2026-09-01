@@ -1,5 +1,5 @@
 {
-  "scriptId": "1QQ3kLISL_PTlS2R7MNxCUtL_u3pwDES1Rlga0G03wn6-OU3tyrojdz9C",
+  "scriptId": "1jOrCKFP5OGb1kD1XiNTtlwc5_uW7Mc490s9l-d9QeXDCmkn5URGiZKxy",
   "rootDir": "",
   "parentId": "13n8-ylbfDFcu8ZGlB9JTTLP2crFVEj3J",
   "scriptExtensions": [
@@ -13,5 +13,6 @@
     ".json"
   ],
   "filePushOrder": [],
-  "skipSubdirectories": false
+  "skipSubdirectories": false,
+  "projectId": "bzq-developers"
 }

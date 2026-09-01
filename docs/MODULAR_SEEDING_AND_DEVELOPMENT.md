@@ -262,12 +262,21 @@ If the bootstrap pipeline halts on AppsUtilities or core standalone script provi
 
 ### To Cold-Deploy a Dev Environment from Nothing:
 ```bash
-./bzq bootstrap-dev <env-name> <parent-folder-id>
+./bzq bootstrap-dev <env-name> <parent-folder-id> [project-number]
 ```
-*Example:*
+*Example (with GCP Linking and Bound Spoke script provisioning):*
 ```bash
-./bzq bootstrap-dev LOCAL_ASHLEYGARNER-HSOM 13n8-ylbfDFcu8ZGlB9JTTLP2crFVEj3J
+./bzq bootstrap-dev LOCAL_ASHLEYGARNER-HSOM 13n8-ylbfDFcu8ZGlB9JTTLP2crFVEj3J 35459168254
 ```
+
+> [!NOTE]
+> **Google Cloud Platform (GCP) Linking**: 
+> Specifying a GCP Project Number (e.g. `35459168254` for `bzq-developers`) automatically triggers:
+> 1. Strict validation via `gcloud` to ensure required Workspace APIs (`sheets.googleapis.com`, `drive.googleapis.com`, and `script.googleapis.com`) are fully enabled.
+> 2. Automated silent linking of the standalone libraries and Chrome extension projects to the Cloud Project in `.clasp.json`.
+> 3. Dynamic provisioning of container-bound script projects inside the newly created Spoke spreadsheets, pushing trigger wrappers and library configurations via the Google Apps Script REST API out-of-the-box.
+> 
+> *If the GCP project is invalid or missing required APIs, the CLI displays missing dependencies and prompts whether to continue with a standard non-linked deployment as a fallback.*
 
 ### To Install or Update a Single Module on an Existing Environment:
 ```bash
@@ -277,3 +286,30 @@ If the bootstrap pipeline halts on AppsUtilities or core standalone script provi
 ```bash
 ./bzq install-module FormsEngine LOCAL_ASHLEYGARNER-HSOM 13n8-ylbfDFcu8ZGlB9JTTLP2crFVEj3J
 ```
+
+## 7. CI/CD Staging, Production, & Runtime Authentication Architecture
+
+### A. CI/CD & Pipeline Deployments (Staging / Production)
+When deploying higher-order environments programmatically via a CI/CD pipeline (e.g., GitHub Actions, GitLab CI, Cloud Build), direct Service Account authentication (`service-account.json`) will fail when trying to programmatically provision bound Apps Script projects, because Service Accounts are restricted from enabling the required user-level Apps Script API setting.
+
+To resolve this and achieve seamless headless pipeline runs, use one of the following architectural strategies:
+
+1. **OAuth Refresh Tokens for Dedicated Deployer Accounts (Recommended)**:
+   - Create a standard Google Workspace User account dedicated to deployments (e.g., `deploy@yourdomain.com`).
+   - Log in as this user and toggle the Apps Script API switch to **"On"** at `https://script.google.com/home/usersettings`.
+   - Obtain an OAuth Refresh Token for this user (via `clasp login` or OAuth playground).
+   - Store the Client ID, Client Secret, and Refresh Token as secrets in your CI/CD repository settings.
+   - Configure the pipeline to inject these credentials during execution. Because this runs in a real user context, all programmatic script project and file creations succeed flawlessly.
+
+2. **Domain-Wide Delegation of Authority (DWD)**:
+   - If using a GCP Service Account is mandatory, your Google Workspace Administrator can configure **Domain-Wide Delegation** on the Service Account.
+   - Authorize the Service Account's Client ID inside the Workspace Admin Console (`admin.google.com`) with the scope:
+     `https://www.googleapis.com/auth/script.projects`
+   - Configure your deployment scripts to perform user impersonation (e.g., setting the `sub` claim to impersonate `deploy@yourdomain.com` when generating OAuth access tokens).
+
+### B. In-App Runtime Dynamic Provisioning
+At runtime, whenever BZQ's core system (such as `ModuleManager` or `SpreadsheetManager`) needs to programmatically provision a new Spoke sheet, custom workflow, or sub-project for a tenant:
+
+- **No Service Accounts / Domain-Wide Delegation Required**: The code is running *natively inside Google Apps Script*.
+- **Active User Context Delegation**: Apps Script provides the BZQ runtime with an authorized access token for the **active logged-in user** via `ScriptApp.getOAuthToken()`.
+- Because the calling context represents a real Workspace user who has consented to BZQ and already has their Apps Script developer switch enabled, all dynamic REST calls to `https://script.googleapis.com/v1/projects` succeed out-of-the-box securely.

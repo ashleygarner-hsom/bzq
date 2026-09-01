@@ -30,7 +30,7 @@ function getSeedData_ModuleManager() {
         "Datasheet": "Modules",
         "Enabled For Validation": true,
         "Spreadsheet": "AppsUtilities.1005.filter(Spreadsheet Name == \"Module Manager\")",
-        "Spreadsheet Id": "${SPOKE_ID}",
+        "Spreadsheet Id": "",
         "Primary Fields": "Module Name",
         "Id Field Name": "Module Number",
         "Header Number": 1,
@@ -42,7 +42,7 @@ function getSeedData_ModuleManager() {
         "Datasheet": "Module Dependencies",
         "Enabled For Validation": true,
         "Spreadsheet": "AppsUtilities.1005.filter(Spreadsheet Name == \"Module Manager\")",
-        "Spreadsheet Id": "${SPOKE_ID}",
+        "Spreadsheet Id": "",
         "Primary Fields": "Dependency Number",
         "Id Field Name": "Dependency Number",
         "Header Number": 1,
@@ -86,6 +86,7 @@ function getSeedData_ModuleManager() {
     // ModuleManager Local Objects
     "3000": [ // Modules
       {
+        "Module": "=ARRAYFORMULA(if(not(isblank(B2:B)), if(not(isblank(C2:C)), text(B2:B,\"0000#\") & \" - \" & C2:C, ), ))",
         "Module Name": "AppsUtilities",
         "Display Name": "BZQ ERP Core Application",
         "Description": "Core application for BZQ ERP system. MUST BE INSTALLED",
@@ -106,6 +107,7 @@ function getSeedData_ModuleManager() {
     ],
     "3001": [ // Module Dependencies
       {
+        "Module Dependency": "=ARRAYFORMULA(if(not(isblank(D2:D)),if(not(isblank(E2:E)),D2:D&\" depends on \"&E2:E,\"\"),\"\"))",
         "Dependent Module": "ModuleManager.3000.3", // ModuleManager
         "Prerequisite Module": "ModuleManager.3000.2" // FormsEngine
       },

@@ -160,6 +160,7 @@ create_clasp_project_safe() {
 link_gcp_project() {
   local folder="$1"
   local project_id="$2"
+  local silent="$3"
   local target_dir="$SCRIPT_DIR/$folder"
   local clasp_config="$target_dir/.clasp.json"
 
@@ -167,7 +168,9 @@ link_gcp_project() {
     log_error "Project not initialized in '$folder'. Run './bzq pull $folder <script-id>' first."
   fi
 
-  log_info "Linking Apps Script project in '$folder' to GCP Project ID: $project_id..."
+  if [ "$silent" != "true" ]; then
+    log_info "Linking Apps Script project in '$folder' to GCP Project ID: $project_id..."
+  fi
   node -e "
     const fs = require('fs');
     const file = '$clasp_config';
@@ -177,12 +180,16 @@ link_gcp_project() {
   "
 
   if [ $? -eq 0 ]; then
-    log_success "Successfully linked project to GCP!"
-    log_banner
-    log_success "DOMAIN-WIDE MARKETPLACE REGISTRATION QUICK LINK:"
-    log_info "Open this URL to enable and configure the Google Workspace Marketplace SDK:"
-    log_info "  https://console.cloud.google.com/apis/api/workspace-marketplace/overview?project=$project_id"
-    log_banner
+    if [ "$silent" != "true" ]; then
+      log_success "Successfully linked project to GCP!"
+      log_banner
+      log_success "DOMAIN-WIDE MARKETPLACE REGISTRATION QUICK LINK:"
+      log_info "Open this URL to enable and configure the Google Workspace Marketplace SDK:"
+      log_info "  https://console.cloud.google.com/apis/api/workspace-marketplace/overview?project=$project_id"
+      log_banner
+    else
+      log_success "Linked '$folder' to GCP Project '$project_id'"
+    fi
   else
     log_error "Failed to link GCP project. Ensure the project ID exists and you have access."
   fi
@@ -258,24 +265,112 @@ EOF
   fi
 }
 
+# Ask for user confirmation in bash
+confirm_action() {
+  local prompt_msg="$1"
+  local ans
+  printf "%b" "${BOLD}${prompt_msg} (y/N): ${NC}"
+  read -r ans
+  if [[ "$ans" =~ ^[Yy]$ ]]; then
+    return 0
+  else
+    return 1
+  fi
+}
+
+# Validate GCP project number and its enabled APIs
+validate_gcp_project() {
+  local project_num="$1"
+  if [ -z "$project_num" ]; then
+    return 1
+  fi
+
+  log_info "Verifying Google Cloud Project Access for: $project_num..."
+  local gcp_id
+  gcp_id=$(gcloud projects describe "$project_num" --format="value(projectId)" 2>/dev/null)
+  
+  if [ -z "$gcp_id" ]; then
+    log_warn "Unable to access GCP Project with number: $project_num."
+    log_warn "Please ensure you have authenticated with 'gcloud auth login' and have permission."
+    return 1
+  fi
+
+  log_success "Found GCP Project ID: $gcp_id"
+  log_info "Checking required Google Workspace APIs..."
+
+  local enabled_services
+  enabled_services=$(gcloud services list --project="$gcp_id" --enabled --filter="name:(sheets.googleapis.com drive.googleapis.com script.googleapis.com)" --format="value(config.name)" 2>/dev/null)
+
+  local has_sheets=false
+  local has_drive=false
+  local has_script=false
+
+  if echo "$enabled_services" | grep -q "sheets.googleapis.com"; then
+    has_sheets=true
+  fi
+  if echo "$enabled_services" | grep -q "drive.googleapis.com"; then
+    has_drive=true
+  fi
+  if echo "$enabled_services" | grep -q "script.googleapis.com"; then
+    has_script=true
+  fi
+
+  # Report status
+  log_banner
+  log_info "API Enablement Audit Status for '$gcp_id':"
+  local missing_apis=""
+  
+  if [ "$has_sheets" = true ]; then
+    log_success "  [✔] Google Sheets API (sheets.googleapis.com)"
+  else
+    echo -e "${RED}✘${NC}  [✘] Google Sheets API (sheets.googleapis.com) - REQUIRED"
+    missing_apis="$missing_apis sheets.googleapis.com"
+  fi
+
+  if [ "$has_drive" = true ]; then
+    log_success "  [✔] Google Drive API (drive.googleapis.com)"
+  else
+    echo -e "${RED}✘${NC}  [✘] Google Drive API (drive.googleapis.com) - REQUIRED"
+    missing_apis="$missing_apis drive.googleapis.com"
+  fi
+
+  if [ "$has_script" = true ]; then
+    log_success "  [✔] Google Apps Script API (script.googleapis.com)"
+  else
+    echo -e "${RED}✘${NC}  [✘] Google Apps Script API (script.googleapis.com) - REQUIRED"
+    missing_apis="$missing_apis script.googleapis.com"
+  fi
+  log_banner
+
+  if [ -n "$missing_apis" ]; then
+    log_warn "MISSING REQUIRED APIs on project '$gcp_id':$missing_apis"
+    log_warn "You can enable them using:"
+    log_warn "  gcloud services enable$missing_apis --project=$gcp_id"
+    return 1
+  fi
+
+  RESOLVED_GCP_ID="$gcp_id"
+  return 0
+}
+
 # Bootstrap a complete dev environment from scratch
-bootstrap_dev_environment() {
+# Deploy central Apps Script standalone modules without seeding or GCP requirements
+deploy_core() {
   local env_name=$(echo "$1" | tr -d '[:space:]')
   local parent_id=$(echo "$2" | tr -d '[:space:]')
 
   log_banner
-  log_info "STARTING COLD DEPLOY FOR DEV ENVIRONMENT: $env_name"
-  log_info "Target Drive Parent Folder: $parent_id"
+  log_info "STARTING CORE SCRIPT DEPLOYMENT FOR ENVIRONMENT: $env_name"
   log_banner
 
-  # 1. Clean slate
+  # Clean slate
   log_info "Cleaning up existing clasp project associations..."
   rm -f "$SCRIPT_DIR/AppsUtilities/.clasp.json"
   rm -f "$SCRIPT_DIR/FormsEngine/.clasp.json"
   rm -f "$SCRIPT_DIR/ModuleManager/.clasp.json"
   rm -f "$SCRIPT_DIR/extension_scaffold/.clasp.json"
 
-  # 2. Deploy AppsUtilities
+  # Deploy AppsUtilities
   log_info "Provisioning AppsUtilities standalone script..."
   mkdir -p "$SCRIPT_DIR/AppsUtilities"
   create_clasp_project_safe "$SCRIPT_DIR/AppsUtilities" --title "AppsUtilities [$env_name]" --type standalone --parentId "$parent_id"
@@ -295,7 +390,7 @@ bootstrap_dev_environment() {
     PATH="/opt/homebrew/opt/node@20/bin:$PATH" npx @google/clasp deploy --description "Initial bootstrap v1"
   )
 
-  # 3. Deploy FormsEngine
+  # Deploy FormsEngine
   log_info "Updating FormsEngine library dependency to use: $apps_utilities_id"
   node -e "
     const fs = require('fs');
@@ -325,7 +420,7 @@ bootstrap_dev_environment() {
     PATH="/opt/homebrew/opt/node@20/bin:$PATH" npx @google/clasp deploy --description "Initial bootstrap v1"
   )
 
-  # 3b. Deploy ModuleManager
+  # Deploy ModuleManager
   log_info "Updating ModuleManager library dependency to use: $apps_utilities_id"
   node -e "
     const fs = require('fs');
@@ -355,7 +450,7 @@ bootstrap_dev_environment() {
     PATH="/opt/homebrew/opt/node@20/bin:$PATH" npx @google/clasp deploy --description "Initial bootstrap v1"
   )
 
-  # 4. Deploy extension_scaffold
+  # Deploy extension_scaffold
   log_info "Updating extension_scaffold library dependencies..."
   node -e "
     const fs = require('fs');
@@ -389,19 +484,134 @@ bootstrap_dev_environment() {
     PATH="/opt/homebrew/opt/node@20/bin:$PATH" npx @google/clasp deploy --description "Initial bootstrap v1"
   )
 
-  # 5. Provision and seed Spreadsheet databases
+  log_banner
+  log_success "CORE SCRIPT PROJECTS DEPLOYED SUCCESSFULLY!"
+  log_banner
+}
+
+# Associate core script projects with standard Google Cloud Platform project
+link_gcp_all() {
+  local env_name=$(echo "$1" | tr -d '[:space:]')
+  local project_num=$(echo "$2" | tr -d '[:space:]')
+
+  log_banner
+  log_info "STARTING GCP LINKING FOR ENVIRONMENT: $env_name"
+  log_banner
+
+  # GCP project validation
+  local gcp_id=""
+  local RESOLVED_GCP_ID=""
+  validate_gcp_project "$project_num"
+  if [ $? -eq 0 ] && [ -n "$RESOLVED_GCP_ID" ]; then
+    gcp_id="$RESOLVED_GCP_ID"
+    log_success "GCP Project is valid and has appropriate scopes!"
+  else
+    log_error "GCP Project validation failed. Please check project number '$project_num'."
+    exit 1
+  fi
+
+  # Binds GCP to all core standalone scripts
+  if [ -f "$SCRIPT_DIR/AppsUtilities/.clasp.json" ]; then
+    link_gcp_project "AppsUtilities" "$gcp_id" "true"
+  fi
+  if [ -f "$SCRIPT_DIR/FormsEngine/.clasp.json" ]; then
+    link_gcp_project "FormsEngine" "$gcp_id" "true"
+  fi
+  if [ -f "$SCRIPT_DIR/ModuleManager/.clasp.json" ]; then
+    link_gcp_project "ModuleManager" "$gcp_id" "true"
+  fi
+  if [ -f "$SCRIPT_DIR/extension_scaffold/.clasp.json" ]; then
+    link_gcp_project "extension_scaffold" "$gcp_id" "true"
+  fi
+
+  local apps_utilities_id=$(node -p "require('$SCRIPT_DIR/AppsUtilities/.clasp.json').scriptId")
+  local forms_engine_id=$(node -p "require('$SCRIPT_DIR/FormsEngine/.clasp.json').scriptId")
+  local module_manager_id=$(node -p "require('$SCRIPT_DIR/ModuleManager/.clasp.json').scriptId")
+  local extension_id=$(node -p "require('$SCRIPT_DIR/extension_scaffold/.clasp.json').scriptId")
+
+  log_warn "===================================================="
+  log_warn "  ⚠️ ACTION REQUIRED: LINK STANDALONE MODULES TO GCP"
+  log_warn "  Please link the 4 central scripts to GCP Project Number"
+  log_warn "  '$project_num' ($gcp_id) to ensure correct API scopes:"
+  log_warn "  "
+  log_warn "  1. AppsUtilities Standalone Library:"
+  log_warn "     https://script.google.com/d/$apps_utilities_id/edit#settings"
+  log_warn "  2. FormsEngine Standalone Library:"
+  log_warn "     https://script.google.com/d/$forms_engine_id/edit#settings"
+  log_warn "  3. ModuleManager Standalone Library:"
+  log_warn "     https://script.google.com/d/$module_manager_id/edit#settings"
+  log_warn "  4. Extension Scaffold:"
+  log_warn "     https://script.google.com/d/$extension_id/edit#settings"
+  log_warn "  "
+  log_warn "  👉 For each link: Scroll to 'Google Cloud Platform (GCP) Project',"
+  log_warn "     click 'Change project', paste '$project_num', and click 'Set project'."
+  log_warn "===================================================="
+  log_info "Please link all 4 projects above in your browser now."
+  read -p "Press [Enter] once you have successfully linked all 4 scripts..."
+}
+
+# Run database configuration worksheets seeding
+seed_db() {
+  local env_name=$(echo "$1" | tr -d '[:space:]')
+  local parent_id=$(echo "$2" | tr -d '[:space:]')
+  local project_num=$(echo "$3" | tr -d '[:space:]')
+
+  log_banner
+  log_info "STARTING DATABASE SEEDING FOR ENVIRONMENT: $env_name"
+  log_banner
+
+  # Fetch script IDs from local .clasp.json config files
+  local apps_utilities_id=""
+  local forms_engine_id=""
+  local module_manager_id=""
+  local extension_id=""
+
+  if [ -f "$SCRIPT_DIR/AppsUtilities/.clasp.json" ]; then
+    apps_utilities_id=$(node -p "require('$SCRIPT_DIR/AppsUtilities/.clasp.json').scriptId")
+  fi
+  if [ -f "$SCRIPT_DIR/FormsEngine/.clasp.json" ]; then
+    forms_engine_id=$(node -p "require('$SCRIPT_DIR/FormsEngine/.clasp.json').scriptId")
+  fi
+  if [ -f "$SCRIPT_DIR/ModuleManager/.clasp.json" ]; then
+    module_manager_id=$(node -p "require('$SCRIPT_DIR/ModuleManager/.clasp.json').scriptId")
+  fi
+  if [ -f "$SCRIPT_DIR/extension_scaffold/.clasp.json" ]; then
+    extension_id=$(node -p "require('$SCRIPT_DIR/extension_scaffold/.clasp.json').scriptId")
+  fi
+
+  if [ -z "$apps_utilities_id" ] || [ -z "$forms_engine_id" ] || [ -z "$module_manager_id" ] || [ -z "$extension_id" ]; then
+    log_error "Missing one or more local clasp project configurations. Did you run './bzq deploy-core' first?"
+    exit 1
+  fi
+
+  local seed_args=("--user-auth")
+  if [ -n "$project_num" ]; then
+    seed_args+=("--gcp-linked")
+  fi
+
   log_info "Seeding configuration workbook databases..."
-  node "$SCRIPT_DIR/scripts/seed-sheets.js" "$env_name" "$parent_id" "$apps_utilities_id" "$forms_engine_id" "$module_manager_id" "$extension_id"
+  node "$SCRIPT_DIR/scripts/seed-sheets.js" "$env_name" "$parent_id" "$apps_utilities_id" "$forms_engine_id" "$module_manager_id" "$extension_id" "--force" "${seed_args[@]}"
   if [ $? -ne 0 ]; then
-    log_error "Database seeding failed! Please inspect the terminal output for the exact Google Drive / Sheets API error."
+    log_error "Database seeding failed!"
     exit 1
   fi
 
   log_banner
-  log_success "COLD DEPLOY AND BOOTSTRAP COMPLETE!"
-  log_info "1. BZQ Extension ID: $extension_id"
-  log_info "2. Open and test your deployment: https://script.google.com/d/$extension_id/edit"
+  log_success "SEEDING PROCESS COMPLETED SUCCESSFULLY!"
   log_banner
+}
+
+# Simplified cold deploy orchestrator
+bootstrap_dev_environment() {
+  local env_name=$(echo "$1" | tr -d '[:space:]')
+  local parent_id=$(echo "$2" | tr -d '[:space:]')
+  local project_num=$(echo "$3" | tr -d '[:space:]')
+
+  deploy_core "$env_name" "$parent_id"
+  if [ -n "$project_num" ]; then
+    link_gcp_all "$env_name" "$project_num"
+  fi
+  seed_db "$env_name" "$parent_id" "$project_num"
 }
 
 # Install and configure a single module on an existing environment

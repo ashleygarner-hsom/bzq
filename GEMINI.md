@@ -11,6 +11,7 @@ You MUST strictly follow these rules for every line of code you generate or edit
 - **Horizontal Length Limit**: Strict maximum of **120 characters** per line. Let lines wrap naturally or break them with proper spacing.
 - **Cyclomatic Complexity**: No nested loops beyond 2 levels deep. Use map/filter/reduce or refactor to avoid deep nesting.
 - **Purity & Mutations**: Functions must be pure; do not modify global state or mutate incoming parameters directly.
+- **Strict Typing & Explicit Classes**: Passing generic, untyped "Object" parameters between functions is strictly forbidden. Define explicit ES6 classes or structured, well-documented schemas (even if restricted to their local execution scopes) to ensure clarity and type safety.
 
 ---
 

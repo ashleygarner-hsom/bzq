@@ -185,6 +185,36 @@ class ConfigurationManager {
   }
 
   /**
+   * Helper: Resolves the Spreadsheet Id for an object configuration record from the Spreadsheets sheet.
+   * Ensures that empty Spreadsheet Id entries in ObjectConfiguration do not cause system failures.
+   * @param {Object} record - The parsed ObjectConfiguration record object.
+   * @returns {void} Modifies record in place (permitted for local scoping).
+   * @private
+   */
+  static resolveObjectSpreadsheetId_(record) {
+    if (record["Spreadsheet Id"] || !record["Spreadsheet"]) return;
+    const ssRef = String(record["Spreadsheet"]).trim();
+    const ssData = this.getSheetData_("Spreadsheets");
+    if (!ssData || ssData.length <= 1) return;
+    
+    const ssHeaders = ssData[0];
+    const ssIndex = ssHeaders.findIndex(h => String(h).trim().toLowerCase() === 'spreadsheet');
+    const ssNameIndex = ssHeaders.findIndex(h => String(h).trim().toLowerCase() === 'spreadsheet name');
+    const ssIdIndex = ssHeaders.findIndex(h => String(h).trim().toLowerCase() === 'spreadsheet id');
+    if (ssIdIndex === -1) return;
+
+    const matched = ssData.slice(1).find(r => {
+      const combined = ssIndex !== -1 ? String(r[ssIndex]).trim() : '';
+      const name = ssNameIndex !== -1 ? String(r[ssNameIndex]).trim() : '';
+      return (combined && (combined === ssRef || ssRef.startsWith(combined) || combined.startsWith(ssRef))) ||
+             (name && (name === ssRef || ssRef.endsWith(name) || name.endsWith(ssRef)));
+    });
+    if (matched) {
+      record["Spreadsheet Id"] = String(matched[ssIdIndex]).trim();
+    }
+  }
+
+  /**
    * Retrieves an object configuration record from ObjectConfiguration.
    * Caches the returned record as a JSON string under both its Object Name and Datasheet Name.
    * @param {string} queryValue - Object Name or Datasheet Name.
@@ -229,6 +259,7 @@ class ConfigurationManager {
       const row = data[i];
       if (String(row[targetColIndex]).trim() === String(queryValue).trim()) {
         const record = GlobalUtilities.getRowDataAsObject(headers, row);
+        this.resolveObjectSpreadsheetId_(record);
         const jsonStr = JSON.stringify(record);
         
         // Cache under the queried key

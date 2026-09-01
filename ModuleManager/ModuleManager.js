@@ -109,33 +109,15 @@ class ModuleManager {
    * @private
    */
   static enableSingleModule_(module, folderId) {
-    const parentFolder = DriveApp.getFolderById(folderId);
     const title = `${module} Spoke Workbook`;
-    const newSs = SpreadsheetApp.create(title);
-    const file = DriveApp.getFileById(newSs.getId());
-    parentFolder.addFile(file);
-    DriveApp.getRootFolder().removeFile(file);
+    const ssId = AppsUtilities.SpreadsheetManager.createSpokeSpreadsheet(title, folderId);
 
-    this.registerSpoke_(module, newSs.getId(), newSs.getUrl());
-    this.seedModuleData_(module, newSs.getId());
-    this.updateStatusToEnabled_(module, newSs.getId());
+    this.seedModuleData_(module, ssId);
+    this.updateStatusToEnabled_(module, ssId);
+
+    // Apply formatting and validation rules post-seeding
+    AppsUtilities.SpreadsheetManager.postProcessSpoke(module, ssId);
     return `Successfully enabled and configured module: ${module}`;
-  }
-
-  /**
-   * Registers a new spoke workbook in the Spreadsheets registry.
-   * @param {string} module - Name of the module.
-   * @param {string} ssId - New spreadsheet ID.
-   * @param {string} ssUrl - New spreadsheet URL.
-   * @private
-   */
-  static registerSpoke_(module, ssId, ssUrl) {
-    const record = {
-      "Spreadsheet Name": `${module} Spoke`,
-      "Spreadsheet ID": ssId,
-      "Spreadsheet URL": ssUrl
-    };
-    AppsUtilities.RecordManager.addRecord("Spreadsheet", record);
   }
 
   /**

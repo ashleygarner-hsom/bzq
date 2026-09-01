@@ -21,7 +21,7 @@ function getSeedData_FormsEngine() {
         "Datasheet": "Forms",
         "Enabled For Validation": true,
         "Spreadsheet": "AppsUtilities.1005.filter(Spreadsheet Name == \"Forms Engine\")",
-        "Spreadsheet Id": "${SPOKE_ID}",
+        "Spreadsheet Id": "",
         "Primary Fields": "Form Name",
         "Id Field Name": "Form Number",
         "Header Number": 1,
@@ -63,6 +63,7 @@ function getSeedData_FormsEngine() {
     // FormsEngine Local Objects
     "2000": [ // Forms
       {
+        "Form": "=ARRAYFORMULA(if(not(isblank(B2:B)),B2:B&\" - \"&C2:C,\"\"))",
         "Form Name": "New prospect",
         "Object Name": "Prospect",
         "Enabled": "Yes"
@@ -79,7 +80,10 @@ function getSeedData_FormsEngine() {
       {
         "Field": "Prospect Number",
         "Display name": "Please provide contact details and all fields applicable",
-        "Field type": "AUTOID"
+        "Field type": "AUTOID",
+        "Referenced object": null,
+        "Validation": null,
+        "Referenced dropdown config": null
       },
       {
         "Field": "Salesperson",
@@ -159,7 +163,10 @@ function getSeedData_FormsEngine() {
       {
         "Field": "Customer Number",
         "Display name": "Provide all available customer details",
-        "Field type": "AUTOID"
+        "Field type": "AUTOID",
+        "Referenced object": null,
+        "Validation": null,
+        "Referenced dropdown config": null
       }
     ]
   };

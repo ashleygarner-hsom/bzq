@@ -300,6 +300,9 @@ class RecordManager {
       });
     }
     
+    return records;
+  }
+    
   /**
    * Retrieves a field value from a specific record in an object's sheet.
    */

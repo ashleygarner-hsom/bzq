@@ -5,6 +5,7 @@ function getSeedData_AppsUtilities() {
   return {
     "1000": [ // SequenceConfiguration
       {
+        "Sequence": "=arrayformula(if(not(isblank(B2:B)),if(not(isblank(C2:C)),text(B2:B,\"0000#\") & \" - \" & C2:C,),))",
         "Sequence Name": "Sequence",
         "Datasheet Name": "SequenceConfiguration",
         "Sequence Prefix": "xSC-",
@@ -61,11 +62,13 @@ function getSeedData_AppsUtilities() {
     ],
     "1001": [ // ObjectConfiguration
       {
+        "Object": "=ARRAYFORMULA(if(not(isblank(B2:B)), if(not(isblank(C2:C)), text(B2:B,\"0000#\") & \" - \" & C2:C, ), ))",
         "Object Name": "Sequence",
         "Datasheet": "SequenceConfiguration",
         "Enabled For Validation": true,
         "Spreadsheet": "AppsUtilities.1005.1",
-        "Spreadsheet Id": "${CONFIG_SS_ID}",
+        "Spreadsheet Id": "=ARRAYFORMULA(if(not(isblank(F2:F)), BZQ_GET_OBJECT_VALUE(\"Spreadsheet\", F2:F, \"Spreadsheet Id\", BZQ_CACHE_VERSION()), \"\"))",
+        "Spreadsheet Url": "=ARRAYFORMULA(if(not(isblank(G2:G)),\"https://docs.google.com/spreadsheets/d/\"&G2:G,\"\"))",
         "Primary Fields": "Sequence Name",
         "Id Field Name": "Sequence Number",
         "Header Number": 1,
@@ -77,7 +80,7 @@ function getSeedData_AppsUtilities() {
         "Datasheet": "ObjectConfiguration",
         "Enabled For Validation": true,
         "Spreadsheet": "AppsUtilities.1005.1",
-        "Spreadsheet Id": "${CONFIG_SS_ID}",
+        "Spreadsheet Id": "",
         "Primary Fields": "Object Name",
         "Id Field Name": "Object Number",
         "Header Number": 1,
@@ -89,7 +92,7 @@ function getSeedData_AppsUtilities() {
         "Datasheet": "LookupConfiguration",
         "Enabled For Validation": true,
         "Spreadsheet": "AppsUtilities.1005.1",
-        "Spreadsheet Id": "${CONFIG_SS_ID}",
+        "Spreadsheet Id": "",
         "Primary Fields": "Lookup Name",
         "Id Field Name": "Lookup Number",
         "Header Number": 1,
@@ -101,7 +104,7 @@ function getSeedData_AppsUtilities() {
         "Datasheet": "DropdownConfiguration",
         "Enabled For Validation": true,
         "Spreadsheet": "AppsUtilities.1005.1",
-        "Spreadsheet Id": "${CONFIG_SS_ID}",
+        "Spreadsheet Id": "",
         "Primary Fields": "Dropdown Name",
         "Id Field Name": "Dropdown Number",
         "Header Number": 1,
@@ -113,7 +116,7 @@ function getSeedData_AppsUtilities() {
         "Datasheet": "GlobalDropdownConfiguration",
         "Enabled For Validation": true,
         "Spreadsheet": "AppsUtilities.1005.1",
-        "Spreadsheet Id": "${CONFIG_SS_ID}",
+        "Spreadsheet Id": "",
         "Primary Fields": "Global Dropdown Name",
         "Id Field Name": "Global Dropdown Number",
         "Header Number": 1,
@@ -125,7 +128,7 @@ function getSeedData_AppsUtilities() {
         "Datasheet": "Spreadsheets",
         "Enabled For Validation": true,
         "Spreadsheet": "AppsUtilities.1005.1",
-        "Spreadsheet Id": "${CONFIG_SS_ID}",
+        "Spreadsheet Id": "",
         "Primary Fields": "Spreadsheet Name",
         "Id Field Name": "Spreadsheet Number",
         "Header Number": 1,
@@ -135,6 +138,8 @@ function getSeedData_AppsUtilities() {
     ],
     "1002": [ // LookupConfiguration
       {
+        "Lookup": "=ARRAYFORMULA(if(not(isblank(B2:B)), if(not(isblank(C2:C)), text(B2:B,\"0000#\") & \" - \" & C2:C, ), ))",
+        "Lookup Name": "=ARRAYFORMULA(if(not(isblank(D2:D)),if(not(isblank(E2:E)),D2:D&\" lookup to \"&E2:E,\"\"),\"\"))",
         "Source Object": "AppsUtilities.1001.2", // Object
         "Target Object": "AppsUtilities.1001.6", // Spreadsheet
         "Column Name": "Spreadsheet"
@@ -157,6 +162,7 @@ function getSeedData_AppsUtilities() {
     ],
     "1003": [ // DropdownConfiguration
       {
+        "Dropdown": "=ARRAYFORMULA(if(not(isblank(B2:B)), if(not(isblank(C2:C)), text(B2:B,\"0000#\") & \" - \" & C2:C, ), ))",
         "Dropdown Name": "Enabled For Validation",
         "Object": "AppsUtilities.1001.2", // Object
         "Values": "Yes, No"
@@ -164,19 +170,22 @@ function getSeedData_AppsUtilities() {
     ],
     "1004": [ // GlobalDropdownConfiguration
       {
+        "Global Dropdown": "=ARRAYFORMULA(if(not(isblank(B2:B)), if(not(isblank(C2:C)), text(B2:B,\"0000#\") & \" - \" & C2:C, ), ))",
         "Global Dropdown Name": "Enabled",
         "Values": "Yes, No"
       }
     ],
     "1005": [ // Spreadsheets
       {
+        "Spreadsheet": "=ARRAYFORMULA(if(not(isblank(B2:B)), if(not(isblank(C2:C)), text(B2:B,\"0000#\") & \" - \" & C2:C, ), ))",
         "Spreadsheet Name": "BZQ Core Configuration",
         "Spreadsheet Id": "${CONFIG_SS_ID}",
+        "Spreadsheet Url": "=ARRAYFORMULA(if(not(isblank(D2:D)),\"https://docs.google.com/spreadsheets/d/\"&D2:D,\"\"))",
         "Folder Path": "/",
         "Notes": "Platform master configuration settings"
       }
     ],
-    "1006": [ // ConfigurationProperties
+    "ConfigurationProperties": [ // ConfigurationProperties
       {
         "Configuration Key": "DEBUG_MODE",
         "Value": true,

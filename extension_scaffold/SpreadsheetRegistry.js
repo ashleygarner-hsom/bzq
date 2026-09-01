@@ -378,8 +378,24 @@ class SpreadsheetRegistry {
       "function triggerSetRecordFormat() { AppsUtilities.triggerSetRecordFormat(); }",
       "function triggerApplyHeaderFormat() { AppsUtilities.triggerApplyHeaderFormat(); }",
       "function triggerApplyRecordFormat() { AppsUtilities.triggerApplyRecordFormat(); }",
+      "/**",
+      " * Returns the current configuration cache version.",
+      " * @customfunction",
+      " * @returns {number} The active cache version number (timestamp).",
+      " */",
       "function BZQ_CACHE_VERSION() { return AppsUtilities.BZQ_CACHE_VERSION(); }",
-      "function BZQ_GET_OBJECT_VALUE(objectName, recordId, fieldName, cacheBuster) { return AppsUtilities.BZQ_GET_OBJECT_VALUE(objectName, recordId, fieldName, cacheBuster); }"
+      "/**",
+      " * Retrieves a property value from a BZQ business object record.",
+      " * @param {string} objectName Name of the business object.",
+      " * @param {string} recordId Unique identifier of the record.",
+      " * @param {string} fieldName Field column name to retrieve.",
+      " * @param {number} cacheBuster Cache buster timestamp (usually BZQ_CACHE_VERSION()).",
+      " * @customfunction",
+      " * @returns {string} The retrieved value.",
+      " */",
+      "function BZQ_GET_OBJECT_VALUE(objectName, recordId, fieldName, cacheBuster) {",
+      "  return AppsUtilities.BZQ_GET_OBJECT_VALUE(objectName, recordId, fieldName, cacheBuster);",
+      "}"
     ];
     const triggerSource = triggerSourceLines.join("\n");
     return {
