@@ -1,6 +1,6 @@
 # BZQ Testing & Browser Automation Standards
 
-This document establishes the official standards, architectures, and guidelines for testing the Biz Qops (BZQ) Google Workspace Add-on, custom sidebars, dialogs, and spreadsheet-linked interfaces. These instructions apply to both **human developers** and **autonomous AI agents** (such as Antigravity) to enable full end-to-end user-flow validation, visual testing, error logging, and viewport emulation.
+This document establishes the official standards, architectures, and guidelines for testing the **BZQ ERP** Google Workspace Add-on, custom sidebars, dialogs, and spreadsheet-linked interfaces. These instructions apply to both **human developers** and **autonomous AI agents** (such as Antigravity) to enable full end-to-end user-flow validation, visual testing, error logging, and viewport emulation.
 
 ---
 

@@ -1,7 +1,6 @@
 #!/usr/bin/env bash
 
-# BZQ-cli Core Helpers
-# Pronounced: "Biz Chops" - Business Operations Platform CLI
+# BZQ CLI
 
 # Color Codes
 NC='\033[0m' # No Color
@@ -51,7 +50,7 @@ log_auth_failure() {
 
 log_banner() {
   echo -e "${PURPLE}====================================================${NC}"
-  echo -e "   ${BOLD}${CYAN}Biz Qops (Biz Chops) Platform CLI${NC}"
+  echo -e "   ${BOLD}${CYAN}BZQ CLI${NC}"
   echo -e "   ${BLUE}Google Workspace Enterprise Suite Manager${NC}"
   echo -e "${PURPLE}====================================================${NC}"
 }
@@ -368,7 +367,7 @@ deploy_core() {
   rm -f "$SCRIPT_DIR/AppsUtilities/.clasp.json"
   rm -f "$SCRIPT_DIR/FormsEngine/.clasp.json"
   rm -f "$SCRIPT_DIR/ModuleManager/.clasp.json"
-  rm -f "$SCRIPT_DIR/extension_scaffold/.clasp.json"
+  rm -f "$SCRIPT_DIR/bzq_gwao/.clasp.json"
 
   # Deploy AppsUtilities
   log_info "Provisioning AppsUtilities standalone script..."
@@ -450,11 +449,11 @@ deploy_core() {
     PATH="/opt/homebrew/opt/node@20/bin:$PATH" npx @google/clasp deploy --description "Initial bootstrap v1"
   )
 
-  # Deploy extension_scaffold
-  log_info "Updating extension_scaffold library dependencies..."
+  # Deploy bzq_gwao
+  log_info "Updating bzq_gwao library dependencies..."
   node -e "
     const fs = require('fs');
-    const path = '$SCRIPT_DIR/extension_scaffold/appsscript.json';
+    const path = '$SCRIPT_DIR/bzq_gwao/appsscript.json';
     const manifest = JSON.parse(fs.readFileSync(path, 'utf8'));
     const libApps = manifest.dependencies.libraries.find(l => l.userSymbol === 'AppsUtilities');
     if (libApps) libApps.libraryId = '$apps_utilities_id';
@@ -466,19 +465,19 @@ deploy_core() {
   "
 
   log_info "Provisioning BZQ Extension standalone script..."
-  mkdir -p "$SCRIPT_DIR/extension_scaffold"
-  create_clasp_project_safe "$SCRIPT_DIR/extension_scaffold" --title "BZQ Extension [$env_name]" --type standalone --parentId "$parent_id"
-  check_clasp_project "$SCRIPT_DIR/extension_scaffold/.clasp.json" "extension_scaffold"
+  mkdir -p "$SCRIPT_DIR/bzq_gwao"
+  create_clasp_project_safe "$SCRIPT_DIR/bzq_gwao" --title "BZQ Extension [$env_name]" --type standalone --parentId "$parent_id"
+  check_clasp_project "$SCRIPT_DIR/bzq_gwao/.clasp.json" "bzq_gwao"
   
   local extension_id
-  extension_id=$(node -p "require('$SCRIPT_DIR/extension_scaffold/.clasp.json').scriptId")
+  extension_id=$(node -p "require('$SCRIPT_DIR/bzq_gwao/.clasp.json').scriptId")
   log_success "BZQ Extension Script ID: $extension_id"
 
   log_info "Pushing BZQ Extension codebase..."
   (
-    cd "$SCRIPT_DIR/extension_scaffold" || exit 1
-    write_env_config "$SCRIPT_DIR/extension_scaffold" "$env_name" "$parent_id" "$apps_utilities_id" "$forms_engine_id" "$module_manager_id"
-    ensure_claspignore "$SCRIPT_DIR/extension_scaffold"
+    cd "$SCRIPT_DIR/bzq_gwao" || exit 1
+    write_env_config "$SCRIPT_DIR/bzq_gwao" "$env_name" "$parent_id" "$apps_utilities_id" "$forms_engine_id" "$module_manager_id"
+    ensure_claspignore "$SCRIPT_DIR/bzq_gwao"
     PATH="/opt/homebrew/opt/node@20/bin:$PATH" npx @google/clasp push -f
     log_info "Deploying BZQ Extension version 1..."
     PATH="/opt/homebrew/opt/node@20/bin:$PATH" npx @google/clasp deploy --description "Initial bootstrap v1"
@@ -520,14 +519,14 @@ link_gcp_all() {
   if [ -f "$SCRIPT_DIR/ModuleManager/.clasp.json" ]; then
     link_gcp_project "ModuleManager" "$gcp_id" "true"
   fi
-  if [ -f "$SCRIPT_DIR/extension_scaffold/.clasp.json" ]; then
-    link_gcp_project "extension_scaffold" "$gcp_id" "true"
+  if [ -f "$SCRIPT_DIR/bzq_gwao/.clasp.json" ]; then
+    link_gcp_project "bzq_gwao" "$gcp_id" "true"
   fi
 
   local apps_utilities_id=$(node -p "require('$SCRIPT_DIR/AppsUtilities/.clasp.json').scriptId")
   local forms_engine_id=$(node -p "require('$SCRIPT_DIR/FormsEngine/.clasp.json').scriptId")
   local module_manager_id=$(node -p "require('$SCRIPT_DIR/ModuleManager/.clasp.json').scriptId")
-  local extension_id=$(node -p "require('$SCRIPT_DIR/extension_scaffold/.clasp.json').scriptId")
+  local extension_id=$(node -p "require('$SCRIPT_DIR/bzq_gwao/.clasp.json').scriptId")
 
   log_warn "===================================================="
   log_warn "  ⚠️ ACTION REQUIRED: LINK STANDALONE MODULES TO GCP"
@@ -540,7 +539,7 @@ link_gcp_all() {
   log_warn "     https://script.google.com/d/$forms_engine_id/edit#settings"
   log_warn "  3. ModuleManager Standalone Library:"
   log_warn "     https://script.google.com/d/$module_manager_id/edit#settings"
-  log_warn "  4. Extension Scaffold:"
+  log_warn "  4. BZQ Workspace Add-on (bzq_gwao):"
   log_warn "     https://script.google.com/d/$extension_id/edit#settings"
   log_warn "  "
   log_warn "  👉 For each link: Scroll to 'Google Cloud Platform (GCP) Project',"
@@ -575,8 +574,8 @@ seed_db() {
   if [ -f "$SCRIPT_DIR/ModuleManager/.clasp.json" ]; then
     module_manager_id=$(node -p "require('$SCRIPT_DIR/ModuleManager/.clasp.json').scriptId")
   fi
-  if [ -f "$SCRIPT_DIR/extension_scaffold/.clasp.json" ]; then
-    extension_id=$(node -p "require('$SCRIPT_DIR/extension_scaffold/.clasp.json').scriptId")
+  if [ -f "$SCRIPT_DIR/bzq_gwao/.clasp.json" ]; then
+    extension_id=$(node -p "require('$SCRIPT_DIR/bzq_gwao/.clasp.json').scriptId")
   fi
 
   if [ -z "$apps_utilities_id" ] || [ -z "$forms_engine_id" ] || [ -z "$module_manager_id" ] || [ -z "$extension_id" ]; then
@@ -656,11 +655,11 @@ install_module() {
     "
   fi
 
-  if [ "$module_name" = "extension_scaffold" ]; then
-    log_info "Updating extension_scaffold library dependencies..."
+  if [ "$module_name" = "bzq_gwao" ]; then
+    log_info "Updating bzq_gwao library dependencies..."
     node -e "
       const fs = require('fs');
-      const path = '$SCRIPT_DIR/extension_scaffold/appsscript.json';
+      const path = '$SCRIPT_DIR/bzq_gwao/appsscript.json';
       const manifest = JSON.parse(fs.readFileSync(path, 'utf8'));
       const libApps = manifest.dependencies.libraries.find(l => l.userSymbol === 'AppsUtilities');
       if (libApps) libApps.libraryId = '$apps_utilities_id';

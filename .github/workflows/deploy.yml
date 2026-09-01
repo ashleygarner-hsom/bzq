@@ -97,9 +97,9 @@ jobs:
           clasp push -f
           clasp deploy -d "$DEPLOY_DESC"
 
-      - name: Build and Push Extension Scaffold
+      - name: Build and Push BZQ Workspace Add-on (bzq_gwao)
         run: |
-          cd extension_scaffold
+          cd bzq_gwao
           node -e "
             const fs = require('fs');
             const file = '.clasp.json';
@@ -110,3 +110,4 @@ jobs:
           "
           clasp push -f
           clasp deploy -d "$DEPLOY_DESC"
+

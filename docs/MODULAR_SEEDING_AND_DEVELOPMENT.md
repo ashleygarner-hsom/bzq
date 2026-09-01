@@ -2,6 +2,8 @@
 
 This guide describes how to develop new code modules (projects) for the BZQ platform, configure their seed data using our **Namespaced Stable ID Seeding** architecture, and manage environmental deployment.
 
+# ** NOTE: The contained Database Schema Reference is deprecated, each Module has its own documented schema in the Module's Models.j.  Additionally, the seeding of sheets discussed in this document is also deprecated and slated to be removed at any time **
+
 ---
 
 ## 1. Authentication Methods

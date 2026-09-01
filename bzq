@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-# BZQ - Biz Qops (pronounced "Biz Chops") CLI Utility Suite
+# BZQ ERP CLI Utility Suite
 # Google Workspace Enterprise Application Manager
 
 # Source core helpers
@@ -402,12 +402,12 @@ case "$COMMAND" in
 
     if [ $? -eq 0 ]; then
       log_success "Deployment created successfully!"
-      if [ "$FOLDER" = "extension_scaffold" ]; then
+      if [ "$FOLDER" = "bzq_gwao" ]; then
         log_banner
         log_success "DEVELOPER MODE INSTALLATION GUIDE:"
         log_info "1. Open script in editor: https://script.google.com/d/180Z9oAaNeouz_qF7U-qGL65rckWAb7_AUChQTUPNbB3YdiycLg4Y8ODw/edit"
         log_info "2. Click 'Deploy' -> 'Test deployments' in top-right toolbar."
-        log_info "3. Under 'BZQ ERP Workspace Extension', click 'Install' for Sheets and Drive."
+        log_info "3. Under 'BZQ ERP', click 'Install' for Sheets and Drive."
         log_info "4. Open or refresh Sheets/Drive; the BZQ icon will appear in the right sidebar!"
         log_banner
       fi

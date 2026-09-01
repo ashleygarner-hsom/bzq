@@ -91,11 +91,11 @@ For companies requiring complete code ownership or custom local development:
 1. **Repository Cloning**: The company forks/clones the BZQ codebase.
 2. **Project Initialization**: Developers use the BZQ CLI to initialize private script projects in their own Shared Drive folders:
    ```bash
-   ./bzq init extension_scaffold <folder-id>
+   ./bzq init bzq_gwao <folder-id>
    ```
 3. **GCP Linking**: They link the projects to their own internal company GCP project:
    ```bash
-   ./bzq link-gcp extension_scaffold <company-gcp-project-id>
+   ./bzq link-gcp bzq_gwao <company-gcp-project-id>
    ```
 4. **Internal Distribution**: They publish the Add-on as a **Private App** inside their organization's private Workspace Marketplace.
 5. **ALM Responsibility**: The client's development team handles updating the script projects when new versions of BZQ are released upstream.

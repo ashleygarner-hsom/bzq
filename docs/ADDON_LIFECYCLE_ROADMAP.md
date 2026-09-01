@@ -167,7 +167,7 @@ We will implement and test this transition in **five highly structured, manageab
 To ensure that developers can quickly bootstrap their sandbox environments using this exact production GWAO-driven workflow, the developer local bootstrapping process will be simplified:
 
 1. **Deploy Libraries**: Run `clasp push` on `AppsUtilities`, `FormsEngine`, and `ModuleManager`.
-2. **Deploy Add-on Wrapper**: Run `clasp push` on `extension_scaffold`.
+2. **Deploy Add-on Wrapper**: Run `clasp push` on `bzq_gwao`.
 3. **Open Add-on**: Open Apps Script, select **Test Deployments**, and install the Add-on on Gmail/Sheets/Drive targets in developer mode.
 4. **Run Native Setup**: Open the Add-on sidebar inside any Google Sheet and click **Provision BZQ**. The entire environment compiles, creates, links, seeds, and warms itself up natively in seconds!
 

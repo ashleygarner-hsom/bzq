@@ -108,7 +108,7 @@ To make the Add-on available to users in Google Sheets and Google Drive:
 1. Inside the Google Workspace Marketplace SDK dashboard, click **App Integration**.
 2. Set the **Extension Type** to: `Google Workspace Add-on`.
 3. Paste the **Apps Script Deployment ID** of your target release (printed by `./bzq deploy` or your CI/CD log).
-4. Under **OAuth Scopes**, add the exact scopes declared in [appsscript.json](../extension_scaffold/appsscript.json):
+4. Under **OAuth Scopes**, add the exact scopes declared in [appsscript.json](../bzq_gwao/appsscript.json):
    - `https://www.googleapis.com/auth/spreadsheets`
    - `https://www.googleapis.com/auth/drive.file`
    - `https://www.googleapis.com/auth/drive.readonly`
