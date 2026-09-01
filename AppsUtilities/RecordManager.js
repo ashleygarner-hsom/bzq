@@ -302,6 +302,30 @@ class RecordManager {
     
     return records;
   }
+    
+  /**
+   * Retrieves a field value from a specific record in an object's sheet.
+   */
+  static getRecordValue(objName, recId, fldName) {
+    try {
+      const { objConfig, sheet } = this.getSheetAndConfig_(objName);
+      const idFld = objConfig["Id Field Name"] || "Id";
+      const headers = sheet.getRange(1, 1, 1, Math.max(1, sheet.getLastColumn())).getValues()[0];
+      const idCol = headers.indexOf(idFld);
+      const tgtCol = headers.indexOf(fldName);
+      if (idCol === -1 || tgtCol === -1 || sheet.getLastRow() <= 1) return "";
+      
+      const data = sheet.getRange(2, 1, sheet.getLastRow() - 1, headers.length).getValues();
+      const match = data.find(r => {
+        const cellId = String(r[idCol]).split(" - ")[0].trim();
+        const searchId = String(recId).split(" - ")[0].trim();
+        return cellId === searchId;
+      });
+      return match ? String(match[tgtCol]) : "";
+    } catch (e) {
+      return "";
+    }
+  }
 }
 
 /**

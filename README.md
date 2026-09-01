@@ -1,96 +1,103 @@
-# Biz Qops (pronounced "Biz Chops")
+# BZQ ERP
 
-Biz Qops is a business management suite built directly on top of out-of-the-box **Google Workspace** services. It allows small and mid-sized businesses to run core operations such as accounting, sales, point of sale (POS), and vendor management—without expensive third-party subscriptions.
+**BZQ ERP** is a modular enterprise resource planning platform built natively on **Google Workspace**. It provides core business operations—such as auto-sequencing, relational object validation, dynamic HTML forms, module discovery, and workflow automation—directly inside Google Sheets and Google Drive via a centralized **Google Workspace Add-on (`bzq_gwao`)**.
+
+---
+
+## 🏗️ System Architecture
+
+```mermaid
+graph TD
+    classDef client fill:#e8eaf6,stroke:#3f51b5,stroke-width:2px;
+    classDef lib fill:#e1f5fe,stroke:#0288d1,stroke-width:2px;
+    classDef storage fill:#fff3e0,stroke:#f57c00,stroke-width:2px;
+
+    subgraph HostClient ["Google Workspace Host (Sheets & Drive)"]
+        GWAO["BZQ Workspace Add-on (bzq_gwao)"]:::client
+        Sidebar["Add-on Sidebar / Form Renderer"]:::client
+    end
+
+    subgraph LibrarySuite ["BZQ Core Libraries"]
+        AU["AppsUtilities (Core Engine & Validation)"]:::lib
+        FE["FormsEngine (Dynamic HTML Forms)"]:::lib
+        MM["ModuleManager (Lifecycle & Graphing)"]:::lib
+    end
+
+    subgraph StorageLayer ["Google Drive Relational Data Layer"]
+        CONFIG["BZQ Core Configuration Workbook"]:::storage
+        SPOKES["Dynamic Spoke Workbooks (Registered in 1005)"]:::storage
+    end
+
+    GWAO --> AU
+    GWAO --> FE
+    GWAO --> MM
+    FE --> AU
+    MM --> AU
+    AU --> CONFIG
+    AU --> SPOKES
+    GWAO --> Sidebar
+```
 
 ---
 
 ## 📂 Repository Structure
 
-The platform is built around a modular architecture where each Google Workspace/Sheets workbook acts as an independent application component linked to a local Git directory:
-
 ```text
-ESR-Biz_Qops/
-├── .gitignore              # Project exclusions
-├── README.md               # Onboarding and architecture documentation
-├── bzq                     # Master CLI entrypoint (Biz Chops manager)
-├── AppsUtilities/          # Core library (business objects, sheet properties, sequencing)
-│   ├── .clasp.json         # Apps Script linkage (Git ignored secrets protected)
-│   ├── .claspignore        # Target folders upload prevention
-│   └── appsscript.json     # Apps Script Manifest
-└── BZQ-cli/                # Core CLI source
-    ├── bzq-core.sh         # Helper functions and CLI engines
-    └── .claspignore-template
+BZQ/
+├── bzq                        # Master BZQ CLI entrypoint
+├── bzq_gwao/                  # Central Google Workspace Add-on Host (CardService & UI)
+├── AppsUtilities/             # Core library (Objects 1000-1006, Sequencing, Validation)
+├── FormsEngine/               # Dynamic HTML entry form renderer (Object 2000)
+├── ModuleManager/             # Module discovery & dependency graphing (Objects 3000-3001)
+├── BZQ-cli/                   # Core CLI helper scripts and templates
+├── docs/                      # Central Diátaxis documentation suite
+└── scripts/                   # Database seeding and migration automation
 ```
-
-### Planned Modules
-As the suite expands, new directories will follow the same pattern as `AppsUtilities`:
-- **`FormsEngine/`** - Dynamic forms schema definition and handling.
-- **`AccountingEngine/`** - Ledgers, double-entry transactions, and financial reporting.
-- **`SalesEngine/`** - Customer pipelines, CRM integrations, and invoice trackers.
-- **`PosEngine/`** - Retail Point-Of-Sale registers and barcode sheet mapping.
-- **`VendorManagement/`** - Purchase ordering, supply chains, and vendor ratings.
 
 ---
 
-## 🛠️ Onboarding: From Scratch to Development
-
-Follow these steps to set up your local development environment:
+## 🚀 Quickstart: Developer Onboarding
 
 ### 1. Prerequisites
-Ensure you have **Node.js** installed on your system. You can check your version by running:
+Ensure you have **Node.js 20+** installed:
 ```bash
 node -v
 ```
 
 ### 2. Authenticate with Google
-Run the built-in login tool. This will launch a standard Google OAuth consent screen in your web browser:
+Log into Google Apps Script via the CLI:
 ```bash
 ./bzq login
 ```
-*Note: Your credentials are saved securely in your system's user home directory (`~/.clasprc.json`) and are never committed to Git.*
 
-### 3. Sync Down a Module
-To clone an existing Google Sheets script project (for example, `AppsUtilities`) for the first time, obtain its **Script ID** (found in your Apps Script Project Settings -> Settings -> Script ID) and run:
+### 3. Bootstrap a Development Sandbox
+Create a target development folder in your Google Drive, copy its folder ID, and run:
 ```bash
-./bzq pull AppsUtilities <SCRIPT_ID>
+./bzq bootstrap-dev DEV <DRIVE_FOLDER_ID>
 ```
-This initializes the directory, generates `.clasp.json`, downloads all your online `.gs` files as standard local `.js` files, and sets up a local `.claspignore` ruleset.
+This automated command:
+1. Provisions and deploys the 4 standalone Apps Script projects (`AppsUtilities`, `FormsEngine`, `ModuleManager`, `bzq_gwao`).
+2. Configures local, git-ignored `EnvConfig.js` environment files.
+3. Automatically creates and seeds the `BZQ Core Configuration` spreadsheet and spoke databases.
+
+### 4. Install in Developer Mode
+1. Open the Add-on in Apps Script: `./bzq open bzq_gwao`.
+2. Click **Deploy** -> **Test deployments** in the top toolbar.
+3. Under **BZQ ERP**, click **Install** for Sheets and Drive.
+4. Refresh Google Sheets or Google Drive; the BZQ icon will appear in the companion sidebar!
 
 ---
 
-## 🤖 Developing and Deploying with Antigravity
+## 📚 Complete Documentation Suite
 
-Antigravity is your autonomous AI coding partner. By combining the power of local JavaScript development with clasp, you can safely write, refactor, and deploy code without risking workbook data corruption.
+All system architecture, developer guides, and reference manuals are organized using the **Diátaxis Framework** in the **[`docs/`](docs/README.md)** directory:
 
-### The Development Workflow
+* 🎓 **[Tutorials (Modular Seeding & Development)](docs/MODULAR_SEEDING_AND_DEVELOPMENT.md)**
+* 🛠️ **[How-To: Testing & Browser Automation](docs/TESTING_AND_BROWSER_AUTOMATION.md)**
+* 🛠️ **[How-To: Deployment & Multi-Tenant ALM](docs/DEPLOYMENT_AND_ALM.md)**
+* 🛠️ **[How-To: Release Process & CI/CD](docs/RELEASE_PROCESS_AND_ALM.md)**
+* 📖 **[Reference: Module Specifications & Standards](docs/MODULE_SPECIFICATIONS_AND_STANDARDS.md)**
+* 💡 **[Explanation: BZQ ERP Architecture & Services Map](docs/ARCHITECTURE.md)**
+* 🗺️ **[Roadmaps: Add-on Lifecycle & Dynamic Seeding Roadmap](docs/ADDON_LIFECYCLE_ROADMAP.md)**
 
-```mermaid
-graph TD
-    A[Ask Antigravity to build feature or fix bug] --> B[Antigravity modifies local JS files]
-    B --> C[Run ./bzq push <folder> to upload changes]
-    C --> D[Test modifications directly inside the Google Workbook]
-    D --> E{Working correctly?}
-    E -- Yes --> F[Commit local files to Git repository]
-    E -- No --> A
-```
-
-### Best Practices:
-1. **Interactive Development:** 
-   When working on UI widgets, custom sidebars, or complex sheet bindings, tell Antigravity what you want. It will modify your local JavaScript and HTML source files inside your module folder.
-2. **Real-time Synchronization:**
-   To automatically push saves to your Google Sheets document while editing code, run:
-   ```bash
-   ./bzq push AppsUtilities --watch
-   ```
-   Any change saved locally will reflect in Google Sheets within 2 seconds.
-3. **Version Control Integration:**
-   Always run Git commands on your local environment to track code history.
-   ```bash
-   git add AppsUtilities/
-   git commit -m "feat: implement document sequence manager"
-   ```
-4. **Deploying Releases:**
-   Once testing is successful, tag your deployment via the CLI:
-   ```bash
-   ./bzq deploy AppsUtilities "Release Description"
-   ```
+For the full navigation map, see **[`docs/README.md`](docs/README.md)**.

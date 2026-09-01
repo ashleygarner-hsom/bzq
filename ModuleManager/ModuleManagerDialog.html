@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <base target="_top">
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600&display=swap" rel="stylesheet">
+    <style>
+      :root {
+        --primary: #6366f1;
+        --primary-hover: #4f46e5;
+        --bg: #0f172a;
+        --surface: rgba(30, 41, 59, 0.7);
+        --text: #f8fafc;
+        --text-muted: #94a3b8;
+        --border: rgba(255, 255, 255, 0.1);
+      }
+      body {
+        font-family: 'Outfit', sans-serif;
+        background-color: var(--bg);
+        color: var(--text);
+        margin: 0;
+        padding: 20px;
+        overflow-x: hidden;
+      }
+      .card {
+        background: var(--surface);
+        backdrop-filter: blur(12px);
+        border: 1px solid var(--border);
+        border-radius: 16px;
+        padding: 24px;
+        box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+      }
+      h1 {
+        font-size: 20px;
+        font-weight: 600;
+        margin-top: 0;
+        margin-bottom: 8px;
+        background: linear-gradient(135deg, #a5b4fc, #6366f1);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+      }
+      p {
+        font-size: 13px;
+        color: var(--text-muted);
+        margin-bottom: 24px;
+        line-height: 1.5;
+      }
+      .field {
+        margin-bottom: 16px;
+      }
+      label {
+        display: block;
+        font-size: 11px;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        color: var(--text-muted);
+        margin-bottom: 6px;
+      }
+      select, input {
+        width: 100%;
+        padding: 10px 14px;
+        background: rgba(15, 23, 42, 0.6);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        color: var(--text);
+        font-family: inherit;
+        font-size: 13px;
+        box-sizing: border-box;
+        transition: all 0.3s;
+      }
+      select:focus, input:focus {
+        border-color: var(--primary);
+        outline: none;
+        box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.2);
+      }
+      button {
+        width: 100%;
+        padding: 12px;
+        background: linear-gradient(135deg, #6366f1, #4f46e5);
+        border: none;
+        border-radius: 8px;
+        color: white;
+        font-family: inherit;
+        font-weight: 600;
+        font-size: 13px;
+        cursor: pointer;
+        transition: all 0.2s;
+        box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+      }
+      button:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 6px 16px rgba(99, 102, 241, 0.4);
+      }
+      button:active {
+        transform: translateY(0);
+      }
+      #loader {
+        display: none;
+        text-align: center;
+        margin-top: 16px;
+      }
+      .spinner {
+        width: 28px;
+        height: 28px;
+        border: 3px solid rgba(99, 102, 241, 0.1);
+        border-top-color: var(--primary);
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+        margin: 0 auto 12px auto;
+      }
+      #output {
+        margin-top: 20px;
+        font-size: 12px;
+        line-height: 1.6;
+        white-space: pre-wrap;
+      }
+      .success {
+        color: #34d399;
+        background: rgba(52, 211, 153, 0.1);
+        border: 1px solid rgba(52, 211, 153, 0.2);
+        padding: 12px;
+        border-radius: 8px;
+      }
+      .error {
+        color: #f87171;
+        background: rgba(248, 113, 113, 0.1);
+        border: 1px solid rgba(248, 113, 113, 0.2);
+        padding: 12px;
+        border-radius: 8px;
+      }
+      @keyframes spin {
+        to { transform: rotate(360deg); }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="card">
+      <h1>BZQ Module Manager</h1>
+      <p>Configure, enable, and seed BZQ modules recursively inside your tenant.</p>
+      
+      <div class="field">
+        <label for="folderId">Google Drive Folder ID</label>
+        <input type="text" id="folderId" placeholder="Enter Folder ID where spokes are created">
+      </div>
+      
+      <div class="field">
+        <label for="moduleName">Target Module</label>
+        <select id="moduleName">
+          <option value="SalesManager">SalesManager (Prospect Tracking)</option>
+          <option value="FinancialAccountingEngine">FinancialAccountingEngine (GL Accounting)</option>
+          <option value="FormsEngine">FormsEngine (HTML Forms parsing)</option>
+        </select>
+      </div>
+      
+      <button onclick="enableModule()">Enable & Configure</button>
+      
+      <div id="loader">
+        <div class="spinner"></div>
+        <div style="font-size: 11px; color: var(--text-muted)">Enabling and seeding module recursively...</div>
+      </div>
+      
+      <div id="output"></div>
+    </div>
+
+    <script>
+      function enableModule() {
+        const folderId = document.getElementById("folderId").value;
+        const moduleName = document.getElementById("moduleName").value;
+        const output = document.getElementById("output");
+        const loader = document.getElementById("loader");
+        
+        if (!folderId) {
+          output.innerHTML = "<div class='error'>Error: Please specify a Google Drive Folder ID.</div>";
+          return;
+        }
+        
+        output.innerHTML = "";
+        loader.style.display = "block";
+        
+        google.script.run
+          .withSuccessHandler(res => {
+            loader.style.display = "none";
+            if (res.indexOf("Error") === 0) {
+              output.innerHTML = `<div class='error'>${res}</div>`;
+            } else {
+              output.innerHTML = `<div class='success'>${res}</div>`;
+            }
+          })
+          .withFailureHandler(err => {
+            loader.style.display = "none";
+            output.innerHTML = `<div class='error'>Fatal Error: ${err.message}</div>`;
+          })
+          .moduleManager_enableModule(moduleName, folderId);
+      }
+    </script>
+  </body>
+</html>

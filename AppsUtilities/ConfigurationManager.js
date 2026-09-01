@@ -185,7 +185,37 @@ class ConfigurationManager {
   }
 
   /**
-   * Retrieves an object configuration record from __ObjectConfiguration.
+   * Helper: Resolves the Spreadsheet Id for an object configuration record from the Spreadsheets sheet.
+   * Ensures that empty Spreadsheet Id entries in ObjectConfiguration do not cause system failures.
+   * @param {Object} record - The parsed ObjectConfiguration record object.
+   * @returns {void} Modifies record in place (permitted for local scoping).
+   * @private
+   */
+  static resolveObjectSpreadsheetId_(record) {
+    if (record["Spreadsheet Id"] || !record["Spreadsheet"]) return;
+    const ssRef = String(record["Spreadsheet"]).trim();
+    const ssData = this.getSheetData_("Spreadsheets");
+    if (!ssData || ssData.length <= 1) return;
+    
+    const ssHeaders = ssData[0];
+    const ssIndex = ssHeaders.findIndex(h => String(h).trim().toLowerCase() === 'spreadsheet');
+    const ssNameIndex = ssHeaders.findIndex(h => String(h).trim().toLowerCase() === 'spreadsheet name');
+    const ssIdIndex = ssHeaders.findIndex(h => String(h).trim().toLowerCase() === 'spreadsheet id');
+    if (ssIdIndex === -1) return;
+
+    const matched = ssData.slice(1).find(r => {
+      const combined = ssIndex !== -1 ? String(r[ssIndex]).trim() : '';
+      const name = ssNameIndex !== -1 ? String(r[ssNameIndex]).trim() : '';
+      return (combined && (combined === ssRef || ssRef.startsWith(combined) || combined.startsWith(ssRef))) ||
+             (name && (name === ssRef || ssRef.endsWith(name) || name.endsWith(ssRef)));
+    });
+    if (matched) {
+      record["Spreadsheet Id"] = String(matched[ssIdIndex]).trim();
+    }
+  }
+
+  /**
+   * Retrieves an object configuration record from ObjectConfiguration.
    * Caches the returned record as a JSON string under both its Object Name and Datasheet Name.
    * @param {string} queryValue - Object Name or Datasheet Name.
    * @param {string} [queryBy='objectName'] - 'objectName', 'object', or 'datasheetName'.
@@ -229,6 +259,7 @@ class ConfigurationManager {
       const row = data[i];
       if (String(row[targetColIndex]).trim() === String(queryValue).trim()) {
         const record = GlobalUtilities.getRowDataAsObject(headers, row);
+        this.resolveObjectSpreadsheetId_(record);
         const jsonStr = JSON.stringify(record);
         
         // Cache under the queried key
@@ -261,7 +292,7 @@ class ConfigurationManager {
   }
 
   /**
-   * Retrieves an array of lookup configuration objects from __LookupConfiguration matching a Source Object.
+   * Retrieves an array of lookup configuration objects from LookupConfiguration matching a Source Object.
    * Caches the returned array as a JSON string.
    * @param {string} sourceObject - Source object name to query.
    * @returns {Object[]|null} Array of lookup configuration objects, or null if not found.
@@ -301,7 +332,7 @@ class ConfigurationManager {
   }
 
   /**
-   * Retrieves a single configuration record from __DropdownConfiguration matching a Dropdown Name and Object Name.
+   * Retrieves a single configuration record from DropdownConfiguration matching a Dropdown Name and Object Name.
    * Caches the returned record as a JSON string.
    * @param {string} dropdownName - Dropdown Name to query.
    * @param {string} objectName - Associated Object Name to query.
@@ -343,7 +374,7 @@ class ConfigurationManager {
   }
 
   /**
-   * Retrieves an array of dropdown configuration objects from __DropdownConfiguration matching an Object.
+   * Retrieves an array of dropdown configuration objects from DropdownConfiguration matching an Object.
    * Caches the returned array as a JSON string.
    * @param {string} objectName - Object name (full object string) to query.
    * @returns {Object[]|null} Array of dropdown configuration objects, or null if not found.
@@ -384,7 +415,7 @@ class ConfigurationManager {
   }
 
   /**
-   * Retrieves a single configuration record from __GlobalDropdownConfiguration matching a Global Dropdown Name.
+   * Retrieves a single configuration record from GlobalDropdownConfiguration matching a Global Dropdown Name.
    * Caches the returned record as a JSON string.
    * @param {string} globalDropdownName - Global Dropdown Name to query.
    * @returns {Object|null} Global Dropdown configuration object, or null if not found.
@@ -453,7 +484,7 @@ class ConfigurationManager {
   }
 
   /**
-   * Updates cached object configurations from the __ObjectConfiguration sheet.
+   * Updates cached object configurations from the ObjectConfiguration sheet.
    * @returns {void}
    */
   static updateCachedObjectConfigurations() {
@@ -487,7 +518,7 @@ class ConfigurationManager {
   }
 
   /**
-   * Updates cached lookup configurations from the __LookupConfiguration sheet.
+   * Updates cached lookup configurations from the LookupConfiguration sheet.
    * @returns {void}
    */
   static updateCachedLookupConfigurations() {
@@ -519,7 +550,7 @@ class ConfigurationManager {
   }
 
   /**
-   * Updates cached dropdown configurations from the __DropdownConfiguration sheet.
+   * Updates cached dropdown configurations from the DropdownConfiguration sheet.
    * @returns {void}
    */
   static updateCachedDropdownConfigurations() {
@@ -560,7 +591,7 @@ class ConfigurationManager {
   }
 
   /**
-   * Updates cached global dropdown configurations from the __GlobalDropdownConfiguration sheet.
+   * Updates cached global dropdown configurations from the GlobalDropdownConfiguration sheet.
    * @returns {void}
    */
   static updateCachedGlobalDropdownConfigurations() {

@@ -1,10 +1,11 @@
 #!/usr/bin/env bash
 
-# BZQ - Biz Qops (pronounced "Biz Chops") CLI Utility Suite
+# BZQ ERP CLI Utility Suite
 # Google Workspace Enterprise Application Manager
 
 # Source core helpers
-CORE_PATH="/Users/mitchgarner/source/repos/ESR-Biz_Qops/BZQ-cli/bzq-core.sh"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+CORE_PATH="$SCRIPT_DIR/BZQ-cli/bzq-core.sh"
 if [ -f "$CORE_PATH" ]; then
   source "$CORE_PATH"
 else
@@ -29,6 +30,12 @@ show_help() {
   echo -e "  ${BOLD}deploy <folder> [description]${NC}          Create a new versioned deployment of the project."
   echo -e "  ${BOLD}status <folder>${NC}                        Check local/remote sync status of files."
   echo -e "  ${BOLD}link-gcp <folder> <project-id>${NC}        Link the script project to a Google Cloud Project."
+  echo -e "  ${BOLD}bootstrap-dev <env-name> <parent-id> [project-number]${NC}  Deploy a complete fresh dev environment with seeded data."
+  echo -e "  ${BOLD}deploy-core <env-name> <parent-id>${NC}    Deploy central script modules without seeding or GCP projects."
+  echo -e "  ${BOLD}link-gcp-all <env-name> <project-num>${NC} Associate central script modules with a GCP project."
+  echo -e "  ${BOLD}seed-db <env-name> <parent-id> [project-num]${NC} Run database seeding and configuration setup worksheets."
+  echo -e "  ${BOLD}create-spoke <name> <env> <parent-id> [num]${NC}  Provision a single Spoke spreadsheet and bound script triggers."
+  echo -e "  ${BOLD}install-module <module-name> <env-name> <parent-id>${NC} Install/configure a module on an existing environment."
   echo ""
   echo -e "${BOLD}PULL OPTIONS:${NC}"
   echo -e "  ${BOLD}-d, --latest-deployed${NC}                 Query deployments and pull the latest deployed version."
@@ -110,7 +117,7 @@ case "$COMMAND" in
       log_error "Missing required <folder> argument. Example: './bzq pull AppsUtilities'"
     fi
 
-    TARGET_DIR="/Users/mitchgarner/source/repos/ESR-Biz_Qops/$FOLDER"
+    TARGET_DIR="$SCRIPT_DIR/$FOLDER"
     CLASP_CONFIG="$TARGET_DIR/.clasp.json"
 
     if [ ! -f "$CLASP_CONFIG" ]; then
@@ -256,7 +263,7 @@ case "$COMMAND" in
 
     if [ "$PUSH_ALL" = true ]; then
       # Discover packages containing .clasp.json
-      REPOS_DIR="/Users/mitchgarner/source/repos/ESR-Biz_Qops"
+      REPOS_DIR="$SCRIPT_DIR"
       folders=()
       for d in "$REPOS_DIR"/*/; do
         if [ -f "${d}.clasp.json" ]; then
@@ -328,7 +335,7 @@ case "$COMMAND" in
 
     else
       # Single folder push
-      TARGET_DIR="/Users/mitchgarner/source/repos/ESR-Biz_Qops/$FOLDER"
+      TARGET_DIR="$SCRIPT_DIR/$FOLDER"
       CLASP_CONFIG="$TARGET_DIR/.clasp.json"
 
       if [ ! -f "$CLASP_CONFIG" ]; then
@@ -375,7 +382,7 @@ case "$COMMAND" in
       log_error "Missing required <folder> argument. Example: './bzq deploy AppsUtilities \"v1.0.0 Release\"'"
     fi
 
-    TARGET_DIR="/Users/mitchgarner/source/repos/ESR-Biz_Qops/$FOLDER"
+    TARGET_DIR="$SCRIPT_DIR/$FOLDER"
     CLASP_CONFIG="$TARGET_DIR/.clasp.json"
 
     if [ ! -f "$CLASP_CONFIG" ]; then
@@ -395,12 +402,12 @@ case "$COMMAND" in
 
     if [ $? -eq 0 ]; then
       log_success "Deployment created successfully!"
-      if [ "$FOLDER" = "extension_scaffold" ]; then
+      if [ "$FOLDER" = "bzq_gwao" ]; then
         log_banner
         log_success "DEVELOPER MODE INSTALLATION GUIDE:"
         log_info "1. Open script in editor: https://script.google.com/d/180Z9oAaNeouz_qF7U-qGL65rckWAb7_AUChQTUPNbB3YdiycLg4Y8ODw/edit"
         log_info "2. Click 'Deploy' -> 'Test deployments' in top-right toolbar."
-        log_info "3. Under 'BZQ ERP Workspace Extension', click 'Install' for Sheets and Drive."
+        log_info "3. Under 'BZQ ERP', click 'Install' for Sheets and Drive."
         log_info "4. Open or refresh Sheets/Drive; the BZQ icon will appear in the right sidebar!"
         log_banner
       fi
@@ -416,7 +423,7 @@ case "$COMMAND" in
       log_error "Missing required <folder> argument. Example: './bzq status AppsUtilities'"
     fi
 
-    TARGET_DIR="/Users/mitchgarner/source/repos/ESR-Biz_Qops/$FOLDER"
+    TARGET_DIR="$SCRIPT_DIR/$FOLDER"
     CLASP_CONFIG="$TARGET_DIR/.clasp.json"
 
     if [ ! -f "$CLASP_CONFIG" ]; then
@@ -445,6 +452,65 @@ case "$COMMAND" in
       log_error "Usage: ./bzq init <folder> [parent-folder-id]"
     fi
     init_script_project "$FOLDER" "$PARENT_ID"
+    ;;
+
+  bootstrap-dev)
+    ENV_NAME="$1"
+    PARENT_ID="$2"
+    PROJECT_NUMBER="$3"
+    if [ -z "$ENV_NAME" ] || [ -z "$PARENT_ID" ]; then
+      log_error "Usage: ./bzq bootstrap-dev <env-name> <parent-folder-id> [project-number]"
+    fi
+    bootstrap_dev_environment "$ENV_NAME" "$PARENT_ID" "$PROJECT_NUMBER"
+    ;;
+
+  deploy-core)
+    ENV_NAME="$1"
+    PARENT_ID="$2"
+    if [ -z "$ENV_NAME" ] || [ -z "$PARENT_ID" ]; then
+      log_error "Usage: ./bzq deploy-core <env-name> <parent-folder-id>"
+    fi
+    deploy_core "$ENV_NAME" "$PARENT_ID"
+    ;;
+
+  link-gcp-all)
+    ENV_NAME="$1"
+    PROJECT_NUMBER="$2"
+    if [ -z "$ENV_NAME" ] || [ -z "$PROJECT_NUMBER" ]; then
+      log_error "Usage: ./bzq link-gcp-all <env-name> <project-number>"
+    fi
+    link_gcp_all "$ENV_NAME" "$PROJECT_NUMBER"
+    ;;
+
+  seed-db)
+    ENV_NAME="$1"
+    PARENT_ID="$2"
+    PROJECT_NUMBER="$3"
+    if [ -z "$ENV_NAME" ] || [ -z "$PARENT_ID" ]; then
+      log_error "Usage: ./bzq seed-db <env-name> <parent-folder-id> [project-number]"
+    fi
+    seed_db "$ENV_NAME" "$PARENT_ID" "$PROJECT_NUMBER"
+    ;;
+
+  create-spoke)
+    SPOKE_NAME="$1"
+    ENV_NAME="$2"
+    PARENT_ID="$3"
+    PROJECT_NUMBER="$4"
+    if [ -z "$SPOKE_NAME" ] || [ -z "$ENV_NAME" ] || [ -z "$PARENT_ID" ]; then
+      log_error "Usage: ./bzq create-spoke <spoke-name> <env-name> <parent-folder-id> [project-number]"
+    fi
+    node "$SCRIPT_DIR/scripts/create-spoke.js" "$SPOKE_NAME" "$ENV_NAME" "$PARENT_ID" "$PROJECT_NUMBER"
+    ;;
+
+  install-module)
+    MODULE_NAME="$1"
+    ENV_NAME="$2"
+    PARENT_ID="$3"
+    if [ -z "$MODULE_NAME" ] || [ -z "$ENV_NAME" ] || [ -z "$PARENT_ID" ]; then
+      log_error "Usage: ./bzq install-module <module-name> <env-name> <parent-folder-id>"
+    fi
+    install_module "$MODULE_NAME" "$ENV_NAME" "$PARENT_ID"
     ;;
 
   *)

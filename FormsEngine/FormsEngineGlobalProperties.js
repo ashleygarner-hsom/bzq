@@ -8,7 +8,10 @@ class FormsEngineGlobalProperties {
    * @private
    */
   static get formsEngineWorkbookId_(){
-    return "1nMPXL_ymuZFbN7fZ-3wEieWoZo7SKDfN5PhIi2AbBf8";
+    const env = typeof BZQ_ENV !== "undefined" ? BZQ_ENV : null;
+    const suffix = (env && env !== "PROD") ? " " + env : "";
+    const searchName = "Forms Engine" + suffix;
+    return AppsUtilities.BqzStateService.resolveAndCacheWorkbookId("BZQ_FORMS_SS_ID", searchName);
   }
   /**
    * Static reference to the Forms List sheet name.

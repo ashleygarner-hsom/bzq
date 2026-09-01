@@ -1,9 +1,9 @@
 # Google Workspace Add-on Migration Architecture
 
-This document defines the architectural design, migration path, and implementation decisions for transitioning the BZQ (BizChops) ERP platform from container-bound spreadsheet scripts to a centralized **Google Workspace Add-on (GWAO)** deployment model. 
+This document defines the architectural design, migration path, and implementation decisions for transitioning the **BZQ ERP** platform from container-bound spreadsheet scripts to a centralized **Google Workspace Add-on (GWAO)** deployment model. 
 
-* For production deployment strategies and application lifecycle management, see the [Deployment and ALM Guide](file:///Users/mitchgarner/source/repos/ESR-Biz_Qops/docs/DEPLOYMENT_AND_ALM.md).
-* For development pipelines, CI/CD, and Google Workspace Marketplace listings, see the [Release Process and ALM Guide](file:///Users/mitchgarner/source/repos/ESR-Biz_Qops/docs/RELEASE_PROCESS_AND_ALM.md).
+* For production deployment strategies and application lifecycle management, see the [Deployment and ALM Guide](./DEPLOYMENT_AND_ALM.md).
+* For development pipelines, CI/CD, and Google Workspace Marketplace listings, see the [Release Process and ALM Guide](./RELEASE_PROCESS_AND_ALM.md).
 
 ---
 
@@ -273,13 +273,13 @@ Follow these steps to deploy and register BZQ.
 To test local changes immediately in Google Sheets/Drive without publishing:
 1. **Initialize script container**:
    ```bash
-   ./bzq pull extension_scaffold <script-id>
+   ./bzq pull bzq_gwao <script-id>
    ```
    *(If initializing for the first time, run `clasp create` or `./bzq login` first).*
 2. **Deploy modifications**:
    ```bash
-   ./bzq push extension_scaffold
-   ./bzq deploy extension_scaffold "v1.0.0 Developer Release"
+   ./bzq push bzq_gwao
+   ./bzq deploy bzq_gwao "v1.0.0 Developer Release"
    ```
 3. **Install and Test via Test Deployments**:
    * Open the Apps Script project editor: [https://script.google.com/d/180Z9oAaNeouz_qF7U-qGL65rckWAb7_AUChQTUPNbB3YdiycLg4Y8ODw/edit](https://script.google.com/d/180Z9oAaNeouz_qF7U-qGL65rckWAb7_AUChQTUPNbB3YdiycLg4Y8ODw/edit)
@@ -295,7 +295,7 @@ To perform a domain/tenant-wide deployment for the entire organization:
    * Get your organization's Google Cloud Project ID.
    * Run the CLI link command:
      ```bash
-     ./bzq link-gcp extension_scaffold <gcp-project-id>
+     ./bzq link-gcp bzq_gwao <gcp-project-id>
      ```
 2. **Configure OAuth Consent**:
    * Navigate to the GCP console OAuth Consent Screen setting.

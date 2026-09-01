@@ -46,6 +46,7 @@ flowchart TD
 
 ### Script and Storage Locations
 * **The GWAO Code**: Lives inside a single script project hosted in the **HSOM Google Drive**. No Apps Script files containing UI code are copied or deployed to the client's Drive.
+* **Registry Pointer (`BZQ Tenant Link [ENV]`)**: To prevent the add-on from storing individual tenant IDs centrally or on an external database, BZQ uses a lightweight pointer file inside the client's own Google Drive. This pointer stores their private Configuration Spreadsheet ID. The add-on dynamically locates this file on launch, reads the ID, and caches it in `PropertiesService.getUserProperties()` for ultra-fast, compliance-friendly configuration resolution.
 * **Client Data**: The client's Drive contains only standard Spreadsheets (the configurations workbook `BZQ_Tenant_Configuration` and various spoke sheets).
 * **Bound Scripts (Wrapper)**: If thin container-bound triggers are used on spoke spreadsheets (for fast edit triggers), these exist as script files inside the client's spreadsheets. However, they are **static code skeletons** copied automatically from templates. They reference the HSOM libraries and never need to be modified by the client.
 
@@ -90,11 +91,21 @@ For companies requiring complete code ownership or custom local development:
 1. **Repository Cloning**: The company forks/clones the BZQ codebase.
 2. **Project Initialization**: Developers use the BZQ CLI to initialize private script projects in their own Shared Drive folders:
    ```bash
-   ./bzq init extension_scaffold <folder-id>
+   ./bzq init bzq_gwao <folder-id>
    ```
 3. **GCP Linking**: They link the projects to their own internal company GCP project:
    ```bash
-   ./bzq link-gcp extension_scaffold <company-gcp-project-id>
+   ./bzq link-gcp bzq_gwao <company-gcp-project-id>
    ```
 4. **Internal Distribution**: They publish the Add-on as a **Private App** inside their organization's private Workspace Marketplace.
 5. **ALM Responsibility**: The client's development team handles updating the script projects when new versions of BZQ are released upstream.
+
+---
+
+## 5. Security Hardening and Namespace Protection
+
+To guarantee complete environment isolation and prevent employees from spoofing the system configuration:
+1. **DLP Rules**: Admins should establish Google Workspace Data Loss Prevention (DLP) or Drive Security Rules to lock down the BZQ namespace, preventing regular users from naming files `BZQ Tenant Link*` or `BZQ Core Configuration*`.
+2. **Access Control**: Keep the production Configuration Spreadsheet inside an Admin-controlled Shared Drive or folder with **Viewer (Read-Only)** access for general staff.
+
+For full, step-by-step configuration steps, refer to [Admin Security Hardening and DLP Guidelines](ADMIN_SECURITY_HARDENING.md).

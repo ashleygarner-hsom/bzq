@@ -1,4 +1,4 @@
-# .claspignore template for Biz Qops
+# .claspignore template for BZQ ERP
 # This file prevents local development resources from being pushed to Google Sheets Apps Script.
 
 # Ignore Git directory

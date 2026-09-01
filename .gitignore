@@ -1,5 +1,5 @@
 # ==============================================================================
-# Git Ignore Configuration - Biz Qops (Biz Chops)
+# Git Ignore Configuration - BZQ ERP
 # Out-of-the-box Google Workspace Business Operations Platform
 # ==============================================================================
 
@@ -52,6 +52,7 @@ lerna-debug.log*
 # NOTE: We DO commit `.clasp.json` (project-script linkage) and `appsscript.json` (manifest).
 # We MUST ignore local credential files if they are ever exported or saved locally.
 .clasprc.json
+EnvConfig.js
 
 # IDE / Editor Configurations
 .vscode/
@@ -73,3 +74,9 @@ dist/
 build/
 out/
 *.log
+
+# Secrets files
+client_secrets.json
+service-account.json
+
+

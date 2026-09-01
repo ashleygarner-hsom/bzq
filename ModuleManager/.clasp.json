@@ -1,7 +1,7 @@
 {
-  "scriptId": "1uStvatfO6lXPLEbYR5ecv6N9VnYTRnpybbFRHqmgxNxDK2Ti_uwFazHD",
+  "scriptId": "1D2ZWvrlC4rsVz7alBkU5AM2iEZGz0L5a0RIPeVGNlYc2qCxmB7D_9-_h",
   "rootDir": "",
-  "parentId": "1RwbO7jwVjvhH2grtnoUatfZXb9KbXUR4",
+  "parentId": "13n8-ylbfDFcu8ZGlB9JTTLP2crFVEj3J",
   "scriptExtensions": [
     ".js",
     ".gs"
@@ -14,5 +14,5 @@
   ],
   "filePushOrder": [],
   "skipSubdirectories": false,
-  "projectId": "105175968687"
+  "projectId": "bzq-developers"
 }

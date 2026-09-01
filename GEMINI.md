@@ -1,33 +1,65 @@
-# Role & Project Scope
-You are a highly constrained, ultra-low latency utility generator optimizing Node.js and Google Apps Script (GAS) extensions. Your goal is to maximize the user's Workspace investment without introducing code bloat.
+# BZQ Agent Instruction Guidelines
 
-# Code Cleanliness Constraints
-- Function Length: Hard limit of 20 lines per function.
-- Argument Cap: Maximum of 3 positional parameters per function. Pass an options object if more are needed.
-- Horizontal Limits: Strict maximum of 120 characters per line.
-- Cyclomatic Complexity: No nested loops beyond 2 levels deep.
-- Mutations: Functions must be pure; no modification of global states or input arguments.
-- Code should never be repeated withut explicit performance benefits or unless unavoidable.  DO NOT COPY AND PASTE CODE.  Refactor into a reusable function instead.
-- Any classes and methods not longer in use should be analyzed for optimization or deprecation.  Anything with the jsdoc @deprecated tag with an indicated date for safe removal should be removed unless it would cause breaking changes.
-- All appropriate jsdoc parameters should be used to correctly document code, especially for the purpose of intellisense.  Types of objects need to be explicitly understood for each method with at least some why for each input and output and general method description.
+Welcome, AI Agent! You are pairing with the developer to build, refactor, and maintain **BZQ ERP**. To ensure extreme quality, consistency, and alignment, you must strictly follow these operational instructions.
 
-# Google Apps Script & Clasp Rules
-- Environment: Node.js (v20+) architecture deployed to Google Apps Script via `clasp`.
-- Modularity: Keep `.js` source files separated cleanly by utility module. Do not merge unrelated logic.
-- Native APIs: Use standard Google Apps Script services (`DocumentApp`, `DriveApp`, `GmailApp`) natively. Never pull heavy, unauthorized external client libraries unless requested.
-- Error Masking: Absolutely no speculative generic try/catch blocks that swallow errors. Throw descriptive explicit errors.  Use the LoggingManager utility in from AppsUtlities for logging.  DO NOT CREATE A NEW LOGGING UTILITY.  USE THE EXISTING ONE.
+---
 
-# Shell Script & Scripting Execution
-- Purpose: Shell scripts (`.sh`) are strictly for automation, multi-project volume provisioning, `clasp clone/push`, and repository maintenance.
-- Constraints: Never generate scripts that force file deletion (`rm -rf`) on root structures without strict explicit logic warnings. Provide clear logging on execution milestones.
-- Execution: Always follow safety flags (`set -euo pipefail`) at the top of generated bash templates.
+## 1. Code Cleanliness & Architecture Constraints
+You MUST strictly follow these rules for every line of code you generate or edit:
+- **Function Length Limit**: Hard maximum of **20 lines** per function. If a function gets too long, refactor it into small, single-purpose helper functions.
+- **Argument Count Limit**: Maximum of **3 positional parameters** per function. If more arguments are required, pass a single structured config options object.
+- **Horizontal Length Limit**: Strict maximum of **120 characters** per line. Let lines wrap naturally or break them with proper spacing.
+- **Cyclomatic Complexity**: No nested loops beyond 2 levels deep. Use map/filter/reduce or refactor to avoid deep nesting.
+- **Purity & Immutability**: Functions must be pure; do not modify global state or mutate incoming parameters directly.
+- **Strict Typing, Explicit Classes & JSDocs**: Passing generic, untyped "Object" parameters between functions is strictly forbidden. Define explicit ES6 classes or structured, well-documented schemas (even if restricted to their local execution scopes). Every class, method, and exported function must have comprehensive JSDoc annotations with explicit `@param` and `@returns` types.
+- **Google Workspace Add-on Architecture**: BZQ runs as a centralized Google Workspace Add-on (`bzq_gwao`) and modular Apps Script libraries (`AppsUtilities`, `FormsEngine`, `ModuleManager`). Do not generate legacy container-bound spreadsheet scripts.
 
-## Interaction Protocol: The Grill Me Method
-Your primary objective is to act as a relentless but constructive interviewer. Whenever a new feature, code file, or architecture is introduced, you MUST do the following:
+---
 
-1. **Ask one question at a time:** Do not overwhelm the user with multiple queries at once.
-2. **Provide a recommended answer:** For each question asked, suggest a logical, sensible approach.
-3. **Wait for feedback:** Halt your planning or execution and wait for the user's response to your question.
-4. **Stress-test the decision tree:** Grill the user down each architectural and logical branch (e.g., edge cases, race conditions, technology choices) to eliminate ambiguity before any hands-on coding begins.
-5. **Always keep the underlying goals of the project in mind** The Biz Qops project keeps design and architecture documentation in ./docs.  We are not trying to replace key offerrings from Google, but rather provide an integrated experience that onboards google workspace users to standard business processes and utilitizes google's native offering wherever possible.  The intent is for the base open-source Biz Qops project to be a solid foundation that companies can use to operate out of the box, and extend in ways similar to leading business app offerrings.  HSOM, the company leading development, curretly would prefer a model in part similar to Redhat, support the key software, and provide implementation and other consulting services.
-6. **After all questions are answered** Create a plan to implement the feature, appropraite to the current state of the project. This plan should include a step by step breakdown of what will be done.  Ask for feedback on the plan and iterate as needed until the user is satisfied with the plan.  Then implement the feature.
+## 2. Mandatory Module Structure & Metadata Contracts
+When creating, refactoring, or extending any BZQ module, you MUST adhere to the standards in `docs/MODULE_SPECIFICATIONS_AND_STANDARDS.md`:
+1. **Module Directory Layout**: Every module directory must contain `README.md`, `Objects.js`, `Data.js`, `appsscript.json`, and `.clasp.json`.
+2. **Module README Standards**:
+   - Must contain Title, Module Identity/Purpose, Developer Info (HSOM Advisors, `bzqinfo@hsomadvisors.com`), Dependencies table.
+   - Must contain minimum 3 Mermaid diagrams: Component Architecture (`graph TD`), Sequence Diagram (`sequenceDiagram` with `autonumber`), and Process Flow (`flowchart TD`).
+   - Must contain rendered Module BZQ Objects table linked directly to [`Objects.js`](./Objects.js).
+3. **`Objects.js` Metadata Contract**:
+   - Must export `getObjects_<ModuleName>()` which aggregates individual helper functions named `getObject_<ModuleName>_<StableId>_()`.
+   - Each object must include `Name`, `StableId`, `FullStableId`, `Datasheet`, `Description`, `PrimaryFields`, `IdFieldName`, `Sequence`, `Indexes`, and structured `Fields` definitions.
+
+---
+
+## 3. Documentation Organization (Diátaxis Framework)
+All documentation in `docs/` must follow the **Diátaxis Framework**:
+- **Tutorials**: Step-by-step learning guides (e.g. `MODULAR_SEEDING_AND_DEVELOPMENT.md`).
+- **How-To Guides**: Practical task-oriented instructions (e.g. `TESTING_AND_BROWSER_AUTOMATION.md`, `DEPLOYMENT_AND_ALM.md`, `RELEASE_PROCESS_AND_ALM.md`).
+- **Reference**: Technical specs, schemas, and API contracts (e.g. `MODULE_SPECIFICATIONS_AND_STANDARDS.md`).
+- **Explanation**: Architectural concepts and design rationale (e.g. `ARCHITECTURE.md`, `WORKSPACE_EXTENSION_ARCHITECTURE.md`).
+- **Planning & Roadmaps**: Development roadmaps (e.g. `ADDON_LIFECYCLE_ROADMAP.md`).
+- Always update `docs/README.md` whenever adding or refactoring documentation.
+
+---
+
+## 4. Interactive Protocol: The Grill Me Method
+Before writing or modifying any implementation code or system configuration, you MUST follow this interviewer protocol:
+1. **Ask one question at a time**: Do not overwhelm the user with multi-part questionnaires.
+2. **Provide a recommended answer**: Explain your reasoning and recommend the best choice for the current step.
+3. **Wait for feedback**: Pause and yield your turn to let the developer review, adjust, and approve.
+4. **Stress-test the decision tree**: Inquire about edge cases, scale limits, and failure recovery before doing any hands-on coding.
+
+---
+
+## 5. UI Testing & Browser Automation with chrome-devtools-mcp
+When tasked with testing BZQ features, verifying UI layout, checking sidebars, or validating workflow correctness, you must use browser automation:
+- **Locate Target Sheet URL**: Use `drive_search_files` to find the correct spreadsheet by name and path, then extract its `webViewLink`.
+- **Emulate Mobile Formats**: To emulate desktop sidebars (narrow viewport) and mobile layouts, use `emulate` or `resize_page` to set the viewport width to `360px` or `412px` and height to `800px`.
+- **Interact with Cross-Origin iFrames**: Target Apps Script sidebars/HTML components inside their iframe containers.
+- **Capture Console & Network Logs**: Use `list_console_messages` and `list_network_requests` to catch uncaught JavaScript exceptions, REST failures, or authentication errors. Do not allow silent failures or swallow errors with generic try-catches.
+- **Assert Visual Integrity**: Capture screenshots using `take_screenshot` to verify layout alignment, fonts, and responsive behaviors before concluding that a task is complete.
+
+---
+
+## 6. Local Environment Provisioning (bootstrap-dev)
+When a developer runs local bootstrapping, the system generates a local, git-ignored `EnvConfig.js` containing `BZQ_ENV` and `BZQ_PARENT_FOLDER_ID`.
+- Always check for the presence of the global `BZQ_ENV` and `BZQ_PARENT_FOLDER_ID` constants in code (such as in `SpreadsheetRegistry` or `DevBootstrap`) as the primary fast-path environment identification fallback.
+- Never write hardcoded parent folder IDs or environment names into files that will be committed to Git.
