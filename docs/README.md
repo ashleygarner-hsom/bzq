@@ -7,15 +7,15 @@ quadrantChart
     title Diátaxis Documentation Framework
     x-axis Practical --> Theoretical
     y-axis Action-Oriented --> Information-Oriented
-    quadrant-1 Reference (Information)
-    quadrant-2 Explanation (Understanding)
-    quadrant-3 Tutorials (Learning)
-    quadrant-4 How-To Guides (Problem Solving)
-    "Module Specifications": [0.85, 0.85]
-    "System Architecture": [0.85, 0.25]
-    "Testing & Automation": [0.25, 0.25]
-    "Deployment & ALM": [0.20, 0.35]
-    "Modular Seeding": [0.20, 0.75]
+    quadrant-1 Reference
+    quadrant-2 Explanation
+    quadrant-3 Tutorials
+    quadrant-4 How-To Guides
+    Module Specifications: [0.85, 0.85]
+    System Architecture: [0.85, 0.25]
+    Testing and Automation: [0.25, 0.25]
+    Deployment and ALM: [0.20, 0.35]
+    Modular Seeding: [0.20, 0.75]
 ```
 
 ---
