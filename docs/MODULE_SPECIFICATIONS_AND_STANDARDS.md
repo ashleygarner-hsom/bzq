@@ -176,3 +176,58 @@ When module validation is executed during the build pipeline (`./bzq compile` or
 | **`MOD-005`** | Every object contains non-empty `Description`, `PrimaryFields`, `IdFieldName`, `Indexes`, and `Fields`. | **BLOCKING ERROR** |
 | **`MOD-006`** | All foreign key references in `Fields` resolve to valid declared objects. | **BLOCKING ERROR** |
 | **`MOD-007`** | No function exceeds 20 lines, 3 positional parameters, or 120 characters per line. | **BLOCKING ERROR** |
+| **`MOD-008`** | Diagrammatic Coverage: All exported classes, services, and schemas must appear in module diagrams. | **BLOCKING ERROR** |
+| **`MOD-009`** | Governance Integrity: Deferred/TBD items must use structured `// TODO(ROADMAP-<ID>)` and registered in roadmap. | **BLOCKING ERROR** |
+
+---
+
+## 7. Spec-Driven & Diagram-First Development Standards
+
+BZQ ERP enforces **Spec-Driven Development (SDD)** across all modules. Every architectural component and functional workflow must be modeled in text-based Mermaid diagrams prior to or concurrently with implementation.
+
+### 7.1 Mandatory Diagram Types:
+1. **Component Architecture (`graph TD` / `graph LR`)**:
+   - Illustrates internal module classes, configuration dependencies, and boundary interactions with upstream libraries.
+2. **Sequence Diagrams (`sequenceDiagram` with `autonumber`)**:
+   - Traces step-by-step execution across user interactions, add-on entrypoints, service layers, and Google APIs.
+3. **Process Flowcharts (`flowchart TD`)**:
+   - Models business decision trees, error handling paths, and state transitions.
+
+### 7.2 Atomic Synchronization Rule:
+No code modification may be committed without updating its corresponding diagrams in `README.md` and related Diátaxis guides. Diagrams are living architectural contracts that guide both human developers and autonomous AI agents.
+
+---
+
+## 8. Future Needs, TBD Features & Roadmap Governance
+
+Whenever an engineering change identifies an edge case, deferred optimization, or future capability (TBD):
+
+1. **Source Code Annotation**:
+   - Must use structured TODO comments linking to a roadmap identifier:
+     ```javascript
+     // TODO(ROADMAP-SEC-01): Implement automated token rotation before deployment to public Marketplace.
+     ```
+2. **Roadmap Registration**:
+   - Must be logged in [`docs/ADDON_LIFECYCLE_ROADMAP.md`](./ADDON_LIFECYCLE_ROADMAP.md) (or module-specific roadmap) under the **Backlog & Future Initiatives** registry with:
+     - Tracking ID (`ROADMAP-XXX-YY`)
+     - Target Phase / Milestone
+     - Scope & Impact Description
+     - Code File References
+
+---
+
+## 9. Deprecation, Sunsetting & Obsolescence Lifecycle
+
+When replacing or retiring legacy interfaces, functions, or schemas:
+
+1. **JSDoc `@deprecated` Annotation**:
+   - Deprecated symbols must declare both the deprecation date and the earliest safe removal date:
+     ```javascript
+     /**
+      * @deprecated Deprecated on 2026-09-01. Obsolete and safe to remove on or after 2027-03-01.
+      * Use SpreadsheetRegistry.lookupSpreadsheet() instead.
+      */
+     ```
+2. **Minimum Sunsetting Window**:
+   - A minimum of 6 months must elapse between deprecation and physical code deletion to ensure smooth tenant transitions.
+

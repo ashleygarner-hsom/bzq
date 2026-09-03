@@ -40,7 +40,22 @@ All documentation in `docs/` must follow the **Diátaxis Framework**:
 
 ---
 
-## 4. Interactive Protocol: The Grill Me Method
+## 4. Spec-Driven & Diagram-First Development (100% Coverage)
+- **100% Documentation & Diagram Coverage**: Every class, subsystem, service, workflow, and data object must be represented in documentation with structural diagrams (Sequence, Component, Process Flow).
+- **Atomic Documentation Sync**: Code changes MUST NOT occur in isolation. Every pull request or refactoring step must update or create the corresponding diagrams and documentation in the relevant Module `README.md` or Diátaxis guides either prior to or concurrently with implementation.
+
+---
+
+## 5. Roadmap, TODOs & Deprecation Governance
+- **TBD / Future Needs Protocol**: Any identified future capability, deferred edge case, or TBD parameter must be formally documented in both:
+  1. **Source Code**: Using structured comments: `// TODO(ROADMAP-<ID>): <Context, rationale, and implementation criteria>`.
+  2. **Roadmap Documents**: Logged in `docs/ADDON_LIFECYCLE_ROADMAP.md` (or module roadmap) under the Backlog & Future Initiatives table with its corresponding Tracking ID.
+- **Deprecation & Sunsetting**: Obsolete methods and legacy triggers must include JSDoc `@deprecated`:
+  - `* @deprecated Deprecated on YYYY-MM-DD. Obsolete and safe to remove on or after YYYY-MM-DD.` (Minimum 6 months).
+
+---
+
+## 6. Interactive Protocol: The Grill Me Method
 Before writing or modifying any implementation code or system configuration, you MUST follow this interviewer protocol:
 1. **Ask one question at a time**: Do not overwhelm the user with multi-part questionnaires.
 2. **Provide a recommended answer**: Explain your reasoning and recommend the best choice for the current step.
@@ -49,7 +64,7 @@ Before writing or modifying any implementation code or system configuration, you
 
 ---
 
-## 5. UI Testing & Browser Automation with chrome-devtools-mcp
+## 7. UI Testing & Browser Automation with chrome-devtools-mcp
 When tasked with testing BZQ features, verifying UI layout, checking sidebars, or validating workflow correctness, you must use browser automation:
 - **Locate Target Sheet URL**: Use `drive_search_files` to find the correct spreadsheet by name and path, then extract its `webViewLink`.
 - **Emulate Mobile Formats**: To emulate desktop sidebars (narrow viewport) and mobile layouts, use `emulate` or `resize_page` to set the viewport width to `360px` or `412px` and height to `800px`.
@@ -59,7 +74,7 @@ When tasked with testing BZQ features, verifying UI layout, checking sidebars, o
 
 ---
 
-## 6. Local Environment Provisioning (bootstrap-dev)
+## 8. Local Environment Provisioning (bootstrap-dev)
 When a developer runs local bootstrapping, the system generates a local, git-ignored `EnvConfig.js` containing `BZQ_ENV` and `BZQ_PARENT_FOLDER_ID`.
 - Always check for the presence of the global `BZQ_ENV` and `BZQ_PARENT_FOLDER_ID` constants in code (such as in `SpreadsheetRegistry` or `DevBootstrap`) as the primary fast-path environment identification fallback.
 - Never write hardcoded parent folder IDs or environment names into files that will be committed to Git.
