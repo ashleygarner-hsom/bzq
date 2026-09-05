@@ -36,6 +36,7 @@ show_help() {
   echo -e "  ${BOLD}seed-db <env-name> <parent-id> [project-num]${NC} Run database seeding and configuration setup worksheets."
   echo -e "  ${BOLD}create-spoke <name> <env> <parent-id> [num]${NC}  Provision a single Spoke spreadsheet and bound script triggers."
   echo -e "  ${BOLD}install-module <module-name> <env-name> <parent-id>${NC} Install/configure a module on an existing environment."
+  echo -e "  ${BOLD}preview [file]${NC}                             Render and preview Mermaid diagrams in your default browser."
   echo ""
   echo -e "${BOLD}PULL OPTIONS:${NC}"
   echo -e "  ${BOLD}-d, --latest-deployed${NC}                 Query deployments and pull the latest deployed version."
@@ -511,6 +512,10 @@ case "$COMMAND" in
       log_error "Usage: ./bzq install-module <module-name> <env-name> <parent-folder-id>"
     fi
     install_module "$MODULE_NAME" "$ENV_NAME" "$PARENT_ID"
+    ;;
+
+  preview)
+    node "$SCRIPT_DIR/scripts/preview-docs.js" "$1"
     ;;
 
   *)
