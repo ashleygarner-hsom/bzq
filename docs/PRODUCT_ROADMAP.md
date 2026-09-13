@@ -29,7 +29,7 @@ graph TD
 
 ## 2. Strategic Domain Pillars
 
-BZQ ERP is structured across 11 core functional domains:
+BZQ ERP is structured across 12 core functional domains:
 
 | Pillar Code | Domain Name | Scope & Core Responsibilities |
 | :--- | :--- | :--- |
@@ -37,6 +37,7 @@ BZQ ERP is structured across 11 core functional domains:
 | **`SEC`** | **Security & Multi-Tenancy** | Organization segregation, OAuth security, role-based ACLs, audit trails. |
 | **`FIN`** | **Financials & Accounting** | General Ledger, Chart of Accounts, AP/AR, Invoicing, Tax, Multi-Currency. |
 | **`SCM`** | **Supply Chain & Inventory** | Warehousing, Stock Moves, Purchasing, Vendors, Bill of Materials (BOM). |
+| **`MFG`** | **Manufacturing & Logistics** | Work orders, routing, production schedules, quality control, maintenance. |
 | **`CRM`** | **Customer Relationships** | Accounts, Contacts, Leads, Opportunities, Quotes, Customer Portals. |
 | **`PMO`** | **Project Management** | Projects, Milestones, Tasks, Timesheets, Resource Planning, Gantt charts. |
 | **`HRM`** | **Human Resource Management**| Employee Directory, Org Chart, Departments, Time Off, Payroll. |
@@ -62,11 +63,43 @@ Every roadmap initiative follows standard open-source governance:
 
 ## 4. Master Initiatives Registry
 
-| Tracking ID | Domain | Epic / Capability | Status | Target Milestone | Description & Acceptance Criteria | Module Scope | Code Reference |
-| :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
-| **`ROADMAP-PLT-01`** | `PLT` | Setup Wizard Core | `Planned` | Phase 1 (GWAO) | Interactive setup wizard card for admin provisioning. | `bzq_gwao` | `bzq_gwao/AddonHomepages.js` |
-| **`ROADMAP-PLT-02`** | `PLT` | Central DB Creation | `Planned` | Phase 2 (GWAO) | Add-on-driven Drive workbook creation & parent folder resolution. | `AppsUtilities` | `AppsUtilities/SpreadsheetManager.js` |
-| **`ROADMAP-PLT-03`** | `PLT` | Dynamic Delta-Seeder | `Planned` | Phase 4 (GWAO) | Cross-module relational delta-seeding engine. | `ModuleManager` | `ModuleManager/ModuleManager.js` |
-| **`ROADMAP-PLT-04`** | `PLT` | Data Validation Engine | `Backlog` | Post-Launch | Centralized Sheets Data Validation engine for dates & numbers. | `FormsEngine` | `FormsEngine/FormsEngine.js` |
-| **`ROADMAP-PLT-05`** | `PLT` | Query & Data Cache | `Backlog` | Post-Launch | High-performance cached query engine for multi-tab datasets. | Platform Core | `AppsUtilities/DataCache.js` |
-| **`ROADMAP-SEC-01`** | `SEC` | OAuth Scope Audit | `Planned` | Marketplace Review | Automated OAuth scope minimization and token refresh audits. | `bzq_gwao` | `bzq_gwao/appsscript.json` |
+### 4.1 Platform Core & Utilities (`PLT`)
+
+| Tracking ID | Epic / Capability | Status | Target Milestone | Description & Acceptance Criteria | Module Scope | Code Reference |
+| :--- | :--- | :--- | :--- | :--- | :--- | :--- |
+| **`ROADMAP-PLT-01`** | Host Add-on Setup Wizard | `Planned` | Alpha (GWAO) | Interactive setup wizard card for admin provisioning and root folder creation. | `bzq_gwao` | `bzq_gwao/AddonHomepages.js` |
+| **`ROADMAP-PLT-02`** | Central DB & Workbook Provisioning | `Planned` | Alpha (GWAO) | Automated Drive workbook creation, parent folder resolution, and spoke registration. | `AppsUtilities` | `AppsUtilities/SpreadsheetManager.js` |
+| **`ROADMAP-PLT-03`** | Dynamic Delta-Seeding Engine | `Planned` | Alpha (GWAO) | Relational cross-module delta-seeder and dependency resolver. | `ModuleManager` | `ModuleManager/ModuleManager.js` |
+| **`ROADMAP-PLT-04`** | Formula Management (`Formula Columns`) | `Planned` | Alpha (GWAO) | Central metadata object (`1007`) managing Sheets array formulas and column formula injection. | `AppsUtilities` | `AppsUtilities/Objects.js` |
+| **`ROADMAP-PLT-05`** | Column Protection (`Field Locks`) | `Planned` | Alpha (GWAO) | Central metadata object (`1008`) locking calculated and protected ranges against non-admins. | `AppsUtilities` | `AppsUtilities/Objects.js` |
+| **`ROADMAP-PLT-06`** | Event Bus & Logic Routing (`TriggerEvents`)| `Planned` | Alpha (GWAO) | Central metadata object (`1009`) mapping record, menu, timing, and webhook events to module logic. | `AppsUtilities` | `AppsUtilities/Objects.js` |
+| **`ROADMAP-PLT-07`** | Sheets Data Validation Engine | `Planned` | Alpha (GWAO) | Central metadata object (`1010`) enforcing cell validation types, warnings/rejections, and range limits. | `AppsUtilities` | `AppsUtilities/Objects.js` |
+| **`ROADMAP-PLT-08`** | Dynamic Range Helper Functions | `Planned` | Alpha (GWAO) | In-sheet formulas (`BZQ_GET_COLUMN_RANGE(obj, field)`) for dynamic A1 notation calculations. | `AppsUtilities` | `AppsUtilities/CustomFunctions.js` |
+| **`ROADMAP-PLT-09`** | Query Engine Data Store (`QG`) | `Backlog` | Beta Milestone | Drive-based query layer with mutex record locking, audit history, and fast reporting for Looker Studio. | Query Engine (`QG`) | `QueryEngine/QueryEngine.js` |
+| **`ROADMAP-PLT-10`** | Entity Relationship Diagram (ERD) Generator | `Backlog` | Post-Beta | Automatic Crow's Foot ERD generation by crawling BZQ Objects and Lookups metadata. | ModuleManager | `ModuleManager/ERDGenerator.js` |
+| **`ROADMAP-PLT-11`** | Relational Multiplicity Constraints | `Backlog` | Post-Beta | Enforce relationship cardinality (`0:1`, `1:1`, `0:*`, `*:*`) across object lookups. | `AppsUtilities` | `AppsUtilities/ValidationManager.js` |
+| **`ROADMAP-PLT-12`** | Record Deletion Governance | `Backlog` | Post-Beta | Soft-delete vs hard-delete semantics and cascading delete policies. | `AppsUtilities` | `AppsUtilities/RecordManager.js` |
+| **`ROADMAP-PLT-13`** | Conditional Formatting Rules Engine | `Backlog` | Production v1.0 | Centralized conditional formatting management across BZQ tenant worksheets. | `AppsUtilities` | `AppsUtilities/FormatManager.js` |
+
+---
+
+### 4.2 Artificial Intelligence & Intelligent Logic (`AI`)
+
+| Tracking ID | Epic / Capability | Status | Target Milestone | Description & Acceptance Criteria | Module Scope | Code Reference |
+| :--- | :--- | :--- | :--- | :--- | :--- | :--- |
+| **`ROADMAP-AI-01`** | Spec-Driven Developer Agent Workflows | `In Progress` | Continuous ALM | Autonomous pairing with human review, 100% diagram coverage, and atomic doc sync. | Repository / ALM | `GEMINI.md` |
+| **`ROADMAP-AI-02`** | BZQ Agent Skills & Custom Tooling Suite | `Planned` | Alpha/Beta | Specialized Antigravity/Gemini agent skills for metadata auditing, diagram validation, and code review. | CLI / Skills | `scripts/preview-docs.js` |
+| **`ROADMAP-AI-03`** | Google Ecosystem & Dependency Sentinel | `Backlog` | Beta Milestone | Automated tracking and linting of breaking changes across Google Apps Script and Workspace APIs. | DevOps / CI | `scripts/check-dependencies.js` |
+| **`ROADMAP-AI-04`** | End-User Gemini Business Context Agent | `Backlog` | Production v1.0 | Integration linking Google Gemini directly into tenant BZQ data context for natural language queries. | Add-on / Gemini | `bzq_gwao/GeminiAssistant.js` |
+| **`ROADMAP-AI-05`** | Intelligent OCR & Document Parser | `Backlog` | Future Scope | Automated invoice, receipt, and packing slip data extraction into ERP staging objects. | AI / Integrations | `IntelligentOps/OCRParser.js` |
+
+---
+
+### 4.3 Security & Multi-Tenancy (`SEC`)
+
+| Tracking ID | Epic / Capability | Status | Target Milestone | Description & Acceptance Criteria | Module Scope | Code Reference |
+| :--- | :--- | :--- | :--- | :--- | :--- | :--- |
+| **`ROADMAP-SEC-01`** | OAuth Scope Minimization & Audits | `Planned` | Marketplace Review | Automated OAuth scope minimization and token refresh audits. | `bzq_gwao` | `bzq_gwao/appsscript.json` |
+| **`ROADMAP-SEC-02`** | Granular Multi-Tier Authorization (RBAC) | `Backlog` | Beta Milestone | Role-based access control across objects, fields, records, modules, and spoke sheets. | `AppsUtilities` | `AppsUtilities/SecurityManager.js` |
+| **`ROADMAP-SEC-03`** | Compliance & SOC2 Architecture Alignment | `Backlog` | Enterprise v1.0 | Enterprise compliance controls, immutable audit trails, and data isolation policies. | Platform Core | `docs/ARCHITECTURE.md` |
+

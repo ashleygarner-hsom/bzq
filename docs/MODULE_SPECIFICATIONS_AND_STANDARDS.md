@@ -178,6 +178,7 @@ When module validation is executed during the build pipeline (`./bzq compile` or
 | **`MOD-007`** | No function exceeds 20 lines, 3 positional parameters, or 120 characters per line. | **BLOCKING ERROR** |
 | **`MOD-008`** | Diagrammatic Coverage: All exported classes, services, and schemas must appear in module diagrams. | **BLOCKING ERROR** |
 | **`MOD-009`** | Governance Integrity: Deferred/TBD items must use structured `// TODO(ROADMAP-<ID>)` and registered in roadmap. | **BLOCKING ERROR** |
+| **`MOD-010`** | Code-to-Docs Traceability: Exported classes, methods, and HTML templates must link to module README anchors. | **BLOCKING ERROR** |
 
 ---
 
@@ -230,4 +231,33 @@ When replacing or retiring legacy interfaces, functions, or schemas:
      ```
 2. **Minimum Sunsetting Window**:
    - A minimum of 6 months must elapse between deprecation and physical code deletion to ensure smooth tenant transitions.
+
+---
+
+## 10. Code-to-Documentation Traceability Standards
+
+To ensure complete bidirectional traceability between the codebase and system documentation:
+
+### 10.1 JavaScript JSDoc Annotations (`@docs` & `@see`):
+All classes and exported functions must include `@docs` annotations pointing to their architectural section in the module's `README.md`:
+```javascript
+/**
+ * Resolves inter-module dependency graphs and executes delta-seeding.
+ * @class ModuleManager
+ * @docs ./README.md#2-component-architecture
+ * @see Objects.js Object 3000 (Module)
+ */
+```
+
+### 10.2 HTML Template Header Comments:
+All Google Apps Script HTML files (dialogs, sidebars, forms) must declare an architectural comment block at the top of the file:
+```html
+<!--
+  @file FormsEngine/FormDialog.html
+  @description Dynamic form rendering container.
+  @docs ../FormsEngine/README.md#form-ui-generation
+  @see Objects.js Object 2000 (Form)
+-->
+```
+
 

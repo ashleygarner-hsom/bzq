@@ -78,3 +78,17 @@ When tasked with testing BZQ features, verifying UI layout, checking sidebars, o
 When a developer runs local bootstrapping, the system generates a local, git-ignored `EnvConfig.js` containing `BZQ_ENV` and `BZQ_PARENT_FOLDER_ID`.
 - Always check for the presence of the global `BZQ_ENV` and `BZQ_PARENT_FOLDER_ID` constants in code (such as in `SpreadsheetRegistry` or `DevBootstrap`) as the primary fast-path environment identification fallback.
 - Never write hardcoded parent folder IDs or environment names into files that will be committed to Git.
+
+---
+
+## 9. Multi-Agent Concurrency & Background Execution
+When executing multi-file tasks, architectural surveys, or verification pipelines:
+- **Parallel Subagent Delegation**: Use `invoke_subagent` to spin up background subagents for long-running validations, AST parsing, and cross-module diagram audits.
+- **Asynchronous Flow**: Allow background tasks to run concurrently while the human developer reviews active code diffs in the primary thread.
+
+---
+
+## 10. Fine-Grained Code Review Guarantee
+- **No Wholesale Overwrites**: Modifying existing code or documentation MUST use fine-grained, contiguous `replace_file_content` edits. Wholesale file overwrites (e.g. `cat << 'EOF'`) are strictly forbidden on existing files.
+- **Transparent Diff Review**: All changes must produce clear, isolated diff blocks so the human developer can easily review and audit every modification in their IDE.
+
