@@ -58,4 +58,5 @@ quadrantChart
 
 ### 5. 🗺️ Planning & Product Roadmaps
 *Active development roadmaps, milestones, and strategic initiatives:*
+* **[BZQ ERP Top-Down Product Roadmap](./PRODUCT_ROADMAP.md)**: Master product roadmap connecting 11 strategic domain pillars (`PLT`, `SEC`, `FIN`, `SCM`, `CRM`, `PMO`, `HRM`, `POS`, `INT`, `AI`, `MOB`) to epics, initiatives, and source code.
 * **[Add-on Lifecycle & Dynamic Seeding Roadmap](./ADDON_LIFECYCLE_ROADMAP.md)**: Native GWAO lifecycle initialization, dynamic schema compilation, and query engine specifications.

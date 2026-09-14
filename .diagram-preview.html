@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>BZQ ERP - Diagram Preview</title>
+  <style>
+    :root {
+      --bg: #f8fafc;
+      --card-bg: #ffffff;
+      --border: #e2e8f0;
+      --text-main: #0f172a;
+      --text-muted: #64748b;
+      --primary: #2563eb;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background-color: var(--bg);
+      color: var(--text-main);
+      padding: 32px 16px;
+      line-height: 1.5;
+    }
+    .container {
+      max-width: 1080px;
+      margin: 0 auto;
+    }
+    header {
+      margin-bottom: 24px;
+      padding-bottom: 16px;
+      border-bottom: 1px solid var(--border);
+    }
+    h1 {
+      font-size: 1.75rem;
+      font-weight: 700;
+      color: var(--text-main);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .file-path {
+      font-size: 0.9rem;
+      color: var(--text-muted);
+      margin-top: 4px;
+      font-family: monospace;
+    }
+    .diagram-card {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      margin-bottom: 24px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+      overflow: hidden;
+    }
+    .card-header {
+      padding: 12px 20px;
+      background: #f1f5f9;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+    }
+    .badge {
+      font-size: 0.75rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      background: var(--primary);
+      color: white;
+      padding: 3px 8px;
+      border-radius: 6px;
+    }
+    .diagram-body {
+      padding: 24px;
+      display: flex;
+      justify-content: center;
+      overflow-x: auto;
+    }
+  </style>
+  <script type="module">
+    import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs';
+    mermaid.initialize({
+      startOnLoad: true,
+      theme: 'default',
+      securityLevel: 'loose'
+    });
+  </script>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>📊 BZQ ERP Diagram Viewer</h1>
+      <div class="file-path">docs/PRODUCT_ROADMAP.md</div>
+    </header>
+    
+  <section class="diagram-card">
+    <div class="card-header">
+      <span class="badge">Diagram 1</span>
+    </div>
+    <div class="diagram-body">
+      <pre class="mermaid">
+graph TD
+    classDef pillar fill:#e8eaf6,stroke:#3f51b5,stroke-width:2px;
+    classDef epic fill:#e1f5fe,stroke:#0288d1,stroke-width:2px;
+    classDef init fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px;
+    classDef code fill:#fff3e0,stroke:#f57c00,stroke-width:2px;
+
+    L1["Level 1: Strategic Domain Pillar (e.g. CRM, Security, Platform)"]:::pillar
+    L2["Level 2: Feature Epic / Capability (e.g. Multi-Tenant Tenancy Engine)"]:::epic
+    L3["Level 3: Roadmap Initiative (e.g. ROADMAP-SEC-01)"]:::init
+    L4["Level 4: Implementation (Objects.js, README diagrams, // TODO)"]:::code
+
+    L1 --> L2
+    L2 --> L3
+    L3 --> L4
+      </pre>
+    </div>
+  </section>
+
+  </div>
+</body>
+</html>

@@ -185,3 +185,19 @@ To simplify developer-agent pairing, enable design-doc auto-generation, and supp
 3. **Tooling & Alignment**:
    - At compile-time, BZQ CLI tools will parse these declarations to audit schema integrity and auto-generate system-wide documentation (`docs/SCHEMAS.md`).
    - During feature-development iterations, AI agents can dynamically consume these standard definitions to achieve perfect context alignment with the developer's architecture.
+
+---
+
+## 📋 Backlog & Future Initiatives Registry
+
+All planned features, deferred edge cases, and TBD requirements must be registered in this table and linked from source code via `// TODO(ROADMAP-<ID>): ...` comments:
+
+| Tracking ID | Target Phase / Milestone | Module Scope | Initiative & Acceptance Criteria | Code References |
+| :--- | :--- | :--- | :--- | :--- |
+| **`ROADMAP-GWAO-01`** | Phase 1 (Admin Setup) | `bzq_gwao` | Interactive Add-on setup wizard card with folder selection. | `bzq_gwao/AddonHomepages.js` |
+| **`ROADMAP-PROV-02`** | Phase 2 (Central DB) | `AppsUtilities` | Native Drive workbook creation & parent folder resolution. | `AppsUtilities/SpreadsheetManager.js` |
+| **`ROADMAP-SEED-03`** | Phase 4 (Seeding) | `ModuleManager` | Dynamic cross-module relational delta-seeder. | `ModuleManager/ModuleManager.js` |
+| **`ROADMAP-VAL-04`** | Post-Launch (Validation) | `FormsEngine` | Centralized Sheets Data Validation engine for dates & numbers. | `FormsEngine/FormsEngine.js` |
+| **`ROADMAP-QRY-05`** | Post-Launch (Query) | Platform Core | High-performance cached query engine for multi-tab datasets. | `AppsUtilities/DataCache.js` |
+| **`ROADMAP-SEC-06`** | Marketplace Review | `bzq_gwao` | Automated OAuth scope minimization and token refresh audits. | `bzq_gwao/appsscript.json` |
+
